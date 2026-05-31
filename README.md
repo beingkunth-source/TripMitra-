@@ -175,12 +175,6 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 ---
 
-## 🚢 Deploy on Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme)
-
-The easiest way to deploy is using **Vercel**. Set the environment variables in the Vercel dashboard and you're good to go!
-
 ---
 
 ## 📄 License
