@@ -1,36 +1,198 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌍✈️ TripMitra — AI-Powered Holiday Trip Planner
 
-## Getting Started
+> **Plan smarter. Travel better.** TripMitra is a full-stack, AI-powered travel planning web application that generates complete itineraries, manages budgets, tracks expenses, provides weather intelligence, and much more — all with an elegant glassmorphism UI.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Features
+
+| Feature | Description |
+|---------|-------------|
+| 🤖 **AI Itinerary Generator** | Generate n-day themed itineraries with specific activities using Google Gemini AI |
+| 🗺️ **Interactive Map** | Leaflet-based day-wise routing with custom numbered markers & polylines |
+| 💰 **Smart Budget Management** | Expense ledger, SVG donut chart, over-budget alerts, AI budget intelligence |
+| 🌤️ **Weather Intelligence** | 16-day forecast + historical data + AI weather/packing advice |
+| 🏨 **Flight & Hotel Deals** | Real-time search via SerpAPI (Google Flights & Hotels) |
+| ✅ **Packing Checklist** | AI-generated packing suggestions by category with interactive checkboxes |
+| 💬 **AI Chat Assistant** | Context-aware travel chatbot powered by Gemini |
+| 📅 **Export & Share** | PDF print, ICS calendar export, shareable trip links |
+| 🔐 **Auth & Cloud Sync** | Supabase Auth (magic link / Google OAuth) with localStorage fallback |
+| 🎨 **Glassmorphism UI** | Modern, responsive design with Framer Motion animations |
+| 🌐 **Currency Converter** | Offline currency converter with hardcoded rates |
+| 🕐 **World Clock** | Multi-timezone clock display |
+
+---
+
+## 🧰 Tech Stack
+
+| Category | Technology |
+|----------|-----------|
+| **Framework** | Next.js 14 (App Router, TypeScript) |
+| **Styling** | Tailwind CSS 3.4 + Glassmorphism Design System |
+| **UI Animations** | Framer Motion 12 |
+| **Icons** | Lucide React |
+| **Maps** | Leaflet 1.9 (CartoDB Voyager tiles) |
+| **AI / LLM** | Google Gemini 2.5 Flash API |
+| **Travel Data** | SerpAPI (Google Flights, Hotels, Maps) |
+| **Weather** | Open-Meteo (free, no API key) |
+| **Database & Auth** | Supabase (PostgreSQL + RLS) |
+| **Caching** | Upstash Redis |
+| **Fonts** | Geist, Outfit, Plus Jakarta Sans |
+
+---
+
+## 📁 Project Structure
+
+```
+TripMitra/
+├── 📂 src/
+│   ├── 📂 app/
+│   │   ├── 📂 api/
+│   │   │   ├── 🤖 generate-itinerary/   # AI itinerary generation
+│   │   │   ├── 💬 chat/                 # AI travel assistant
+│   │   │   ├── 🗺️ geocode/              # Place → coordinates
+│   │   │   ├── 🌤️ weather/              # Forecast & historical data
+│   │   │   ├── 🌤️ weather-advice/       # AI weather/clothing tips
+│   │   │   ├── ✅ packing-suggestions/   # AI packing list generator
+│   │   │   ├── ✈️ flights/              # Google Flights search
+│   │   │   ├── 🏨 hotels/               # Google Hotels search
+│   │   │   ├── 💰 budget-intelligence/   # AI budget analysis
+│   │   │   ├── 💰 budget-suggestions/    # AI budget allocation tips
+│   │   │   ├── 📝 itinerary/            # Legacy + TripAdvisor places
+│   │   │   ├── 🖼️ search-images/        # Destination images
+│   │   │   ├� 🔍 check-border/          # Cross-border detection
+│   │   │   └── 🚗 transit-options/      # Multi-mode transit search
+│   │   ├── 📂 budget/[id]/              # Budget ledger page
+│   │   ├── 📂 planner/[id]/             # Main trip planner (3-column)
+│   │   ├── 📄 page.tsx                  # Homepage
+│   │   ├── 📄 layout.tsx                # Root layout + BottomDock nav
+│   │   ├── 🎨 globals.css               # Glassmorphism design system
+│   │   └── 📂 fonts/                    # Geist font files
+│   ├── 📂 components/
+│   │   ├── 💬 AIChatAssistant.tsx       # Gemini chat sidebar
+│   │   ├── 📱 BottomDock.tsx            # Navigation + auth modal
+│   │   ├── 💱 CurrencyConverter.tsx     # Offline currency converter
+│   │   ├── 📤 ExportButtons.tsx         # PDF, ICS, Share
+│   │   ├── 🖼️ ImageWithFallback.tsx     # Image with skeleton fallback
+│   │   ├── 🗺️ Map.tsx                   # Leaflet interactive map
+│   │   └── 🕐 WorldClock.tsx            # Multi-timezone clock
+│   └── 📂 lib/
+│       ├── 📦 api-helper.ts             # Gemini, SerpAPI, geocoding, utils
+│       ├── 🗄️ redis.ts                  # Upstash Redis client
+│       ├── 🗃️ store.ts                  # State management + localStorage/Supabase
+│       └── 🔌 supabaseClient.ts         # Supabase client init
+├── 📂 supabase/
+│   └── 📄 schema.sql                    # 11 tables + RLS + triggers
+├── 📂 public/
+│   └── 📄 manifest.json                 # Web app manifest
+├── 📄 .env.example                      # Environment variables template
+├── 📄 next.config.mjs                   # Next.js config
+├── 📄 tailwind.config.ts               # Tailwind config
+├── 📄 tsconfig.json                     # TypeScript config
+├── 📄 package.json                      # Dependencies & scripts
+└── 📄 postcss.config.mjs               # PostCSS config
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠️ Getting Started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prerequisites
 
-## Learn More
+- **Node.js** 18+ (recommended: 20 LTS)
+- **npm** or **yarn** or **pnpm**
+- A **Google Gemini API key** (free tier available at [Google AI Studio](https://aistudio.google.com/))
+- A **SerpAPI key** (free 100 searches/month at [serpapi.com](https://serpapi.com/))
 
-To learn more about Next.js, take a look at the following resources:
+### 1️⃣ Clone & Install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+# Clone the repository
+git clone https://github.com/beingkunth-source/TripMitra-.git
+cd TripMitra-
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Install dependencies
+npm install
+```
 
-## Deploy on Vercel
+### 2️⃣ Set Up Environment Variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Copy the example env file
+cp .env.example .env
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Then edit `.env` and fill in your API keys:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+SERP_API_KEY=your_serp_api_key_here
+PORT=3000
+```
+
+> ⚠️ **Supabase & Upstash Redis** are optional. The app runs in **offline/local mode** using `localStorage` without them. To enable cloud features, add the Supabase and Upstash variables as shown in `.env.example`.
+
+### 3️⃣ Run the Development Server
+
+```bash
+# Start Next.js dev server
+npm run dev
+```
+
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+
+### 4️⃣ Build for Production
+
+```bash
+# Build the application
+npm run build
+
+# Start the production server
+npm start
+```
+
+### Other Commands
+
+```bash
+# Lint the codebase
+npm run lint
+```
+
+---
+
+## 🗄️ Supabase Database Setup (Optional)
+
+1. Create a project at [supabase.com](https://supabase.com/)
+2. Go to **SQL Editor** and paste the contents of `supabase/schema.sql`
+3. Copy your project URL and anon key from **Settings → API**
+4. Add them to `.env`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+---
+
+## 🚢 Deploy on Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme)
+
+The easiest way to deploy is using **Vercel**. Set the environment variables in the Vercel dashboard and you're good to go!
+
+---
+
+## 📄 License
+
+This project is licensed under the **GPL-3.0 License** — see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+  
+Made with ❤️ by [beingkunth-source](https://github.com/beingkunth-source)
+
+⭐ Star this repo if you find it useful!
+
+</div>

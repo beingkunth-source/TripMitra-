@@ -1,27 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --font-primary: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', -apple-system, sans-serif;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Premium Warm Off-White Theme Color Palette */
+  --bg-primary: #FAF8F5;    /* Soothing warm bone-cream */
+  --bg-secondary: #F4F1E9;  /* Soft sand tone */
+  --bg-tertiary: #EAE6DB;   /* Warm grey-beige */
+  
+  --foreground: #221F1C;    /* Warm dark charcoal (no harsh black) */
+  --foreground-muted: #666059; /* Soft dark taupe */
+  
+  /* Brand Accent Colors (Soft, travel-inspired palette) */
+  --color-primary: 76, 122, 191;   /* Soft slate blue */
+  --color-accent: 58, 150, 135;    /* Soft teal */
+  --color-teal: 58, 150, 135;      /* Soft teal */
+  --color-success: 76, 140, 90;    /* Muted moss green */
+  --color-warning: 212, 157, 66;   /* Warm mustard gold */
+  --color-danger: 196, 90, 90;     /* Muted brick red */
+
+  /* Glassmorphism Variables for Warm Background */
+  --glass-bg: rgba(253, 252, 249, 0.85);
+  --glass-border: rgba(102, 96, 89, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.6);
+  --glass-blur: 16px;
+  
+  --shadow-soft: 0 10px 35px rgba(102, 85, 68, 0.05), 0 2px 8px rgba(102, 85, 68, 0.02);
+  --shadow-glow: 0 0 24px rgba(76, 122, 191, 0.05);
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-primary);
+  font-family: var(--font-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
 }
+
+/* --- Webkit Scrollbar Styling --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.1);
+  border-radius: 99px;
+  border: 1px solid transparent;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+/* --- Premium Glassmorphism Classes --- */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glass-panel-glow {
+  box-shadow: var(--shadow-soft), var(--shadow-glow);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--foreground);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-input:focus {
+  border-color: rgba(79, 70, 229, 0.5);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  outline: none;
+}
+
+.glass-btn {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--foreground);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-btn:hover:not(:disabled) {
+  background: rgba(248, 250, 252, 0.9);
+  border-color: rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+
+.glass-btn-active {
+  background: rgba(79, 70, 229, 0.08);
+  border-color: rgba(79, 70, 229, 0.3);
+  color: #312E81;
+}
+
+.glass-btn-active:hover:not(:disabled) {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.4);
+}
+
+/* Custom Marker CSS for Leaflet hybrid map */
+.custom-leaflet-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-weight: 800;
+  color: white;
+  background: linear-gradient(135deg, rgb(76, 122, 191) 0%, rgb(58, 150, 135) 100%);
+  text-align: center;
+}
+/* Trigger recompile */
