@@ -68,8 +68,14 @@ export async function GET(request: Request) {
       return NextResponse.json(data);
     }
 
+    if (data && data.error) {
+      console.error(`[SerpAPI Flights API Error] SerpAPI returned an error code/message: "${data.error}"`);
+    } else {
+      console.error(`[SerpAPI Flights Format Error] Request succeeded but returned no best_flights. Response keys: ${data ? Object.keys(data).join(", ") : "null"}`);
+    }
+
     // Failover Mock Data
-    console.warn(`SerpAPI flights query failed or returned no results for ${departure_id} -> ${arrival_id}. Returning mock flights failover.`);
+    console.warn(`SerpAPI flights query failed. Returning mock flights failover.`);
     const mockFailover = {
       best_flights: [
         {
@@ -107,7 +113,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(mockFailover);
   } catch (error: any) {
-    console.error("Error fetching flights:", error);
-    return NextResponse.json({ error: "Failed to fetch flights" }, { status: 500 });
+    console.error("[SerpAPI Flights Exception] Failed to execute flight query:", error);
+    return NextResponse.json({ error: `Failed to fetch flights: ${error.message}` }, { status: 500 });
   }
 }

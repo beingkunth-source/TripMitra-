@@ -8,6 +8,9 @@ export interface TripActivity {
   time?: string; // e.g. "Morning", "Afternoon", "Evening"
   lat?: number;
   lng?: number;
+  imageUrl?: string;
+  rating?: number;
+  notes?: string;
 }
 
 export interface TripDay {
@@ -22,6 +25,10 @@ export interface TripExpense {
   category: "Flights" | "Hotels" | "Food" | "Activities" | "Shopping & Misc";
   amount: number;
   date?: string;
+  currency?: string;
+  originalAmount?: number;
+  paidBy?: string;
+  splitWith?: string[];
 }
 
 export interface PackingItem {
@@ -46,10 +53,13 @@ export interface Trip {
 }
 
 // Global subscribers list to notify state updates across hooks
-const listeners = new Set<() => void>();
+const listeners = new Set<(changedTripId?: string) => void>();
 
-function emitChange() {
-  listeners.forEach((listener) => listener());
+// Module-level timers map for debouncing Supabase activity updates
+const supabaseActivitiesDebounceTimers: Record<string, NodeJS.Timeout> = {};
+
+function emitChange(tripId?: string) {
+  listeners.forEach((listener) => listener(tripId));
 }
 
 // -----------------------------------------------------------------------------
@@ -124,33 +134,47 @@ export async function updateTripRecord(updatedTrip: Trip) {
         
         // 2. Sync itinerary days and activities
         for (const day of updatedTrip.itinerary) {
-          let { data: dayRec } = await supabase
+          const { data: dayRec, error: dayErr } = await supabase
             .from("trip_days")
             .select("id")
             .eq("trip_id", updatedTrip.id)
             .eq("day_number", day.dayNumber)
             .single();
 
-          if (!dayRec) {
-            const { data: newDay } = await supabase
+          if (dayErr && dayErr.code !== "PGRST116") {
+            console.error("Supabase error querying trip day in updateTripRecord:", dayErr.message);
+          }
+
+          let resolvedDayRec = dayRec;
+          if (!resolvedDayRec) {
+            const { data: newDay, error: insertErr } = await supabase
               .from("trip_days")
               .insert({ trip_id: updatedTrip.id, day_number: day.dayNumber, theme: day.theme })
               .select("id")
               .single();
-            dayRec = newDay;
+            if (insertErr) {
+              console.error("Supabase error inserting trip day in updateTripRecord:", insertErr.message);
+            }
+            resolvedDayRec = newDay;
           } else {
-            await supabase
+            const { error: updateErr } = await supabase
               .from("trip_days")
               .update({ theme: day.theme })
-              .eq("id", dayRec.id);
+              .eq("id", resolvedDayRec.id);
+            if (updateErr) {
+              console.error("Supabase error updating trip day theme in updateTripRecord:", updateErr.message);
+            }
           }
 
-          if (dayRec) {
+          if (resolvedDayRec) {
             // Replace activities
-            await supabase.from("activities").delete().eq("day_id", dayRec.id);
+            const { error: deleteErr } = await supabase.from("activities").delete().eq("day_id", resolvedDayRec.id);
+            if (deleteErr) {
+              console.error("Supabase error deleting activities in updateTripRecord:", deleteErr.message);
+            }
             if (day.activities.length > 0) {
               const insertData = day.activities.map((act, index) => ({
-                day_id: dayRec.id,
+                day_id: resolvedDayRec.id,
                 name: act.name,
                 description: act.description || "",
                 time: act.time || "Morning",
@@ -162,7 +186,7 @@ export async function updateTripRecord(updatedTrip: Trip) {
             }
           }
         }
-        emitChange();
+        emitChange(updatedTrip.id);
         return;
       } catch (err) {
         console.error("Supabase trip record update failed:", err);
@@ -186,6 +210,10 @@ export function deleteLocalTrip(tripId: string) {
 // Fetch a nested Trip object from Supabase relational tables
 export async function fetchFullTripFromSupabase(tripId: string): Promise<Trip | null> {
   if (!isSupabaseConfigured) return null;
+  // A guest/local ID (like '162coop') is not a valid UUID format. Return null immediately
+  // to avoid triggering Supabase database exceptions for invalid UUID syntax.
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_REGEX.test(tripId)) return null;
   try {
     const { data: tripData, error: tripErr } = await supabase
       .from("trips")
@@ -269,11 +297,14 @@ export async function createSupabaseTrip(
     if (tripErr || !tripRecord) throw tripErr || new Error("Failed to insert trip");
 
     // Insert Days
-    const daysData = Array.from({ length: tripData.days }, (_, i) => ({
-      trip_id: tripRecord.id,
-      day_number: i + 1,
-      theme: i === 0 ? "Arrival & Explore" : `Day ${i + 1}`
-    }));
+    const daysData = Array.from({ length: tripData.days }, (_, i) => {
+      const matchedItineraryDay = tripData.itinerary?.find(d => d.dayNumber === i + 1);
+      return {
+        trip_id: tripRecord.id,
+        day_number: i + 1,
+        theme: matchedItineraryDay?.theme || (i === 0 ? "Arrival & Explore" : `Day ${i + 1}`)
+      };
+    });
 
     const { data: insertedDays, error: daysErr } = await supabase
       .from("trip_days")
@@ -307,7 +338,7 @@ export async function createSupabaseTrip(
       }
     }
 
-    emitChange();
+    emitChange(tripRecord.id);
     return fetchFullTripFromSupabase(tripRecord.id);
   } catch (err) {
     console.error("createSupabaseTrip error:", err);
@@ -370,7 +401,14 @@ export function useActiveTrip(tripId: string | null) {
 
       if (tripId) {
         const fullTrip = await fetchFullTripFromSupabase(tripId);
-        setTrip(fullTrip);
+        if (fullTrip) {
+          setTrip(fullTrip);
+        } else {
+          // If not found in Supabase (or guest ID), fall back to local storage
+          const allLocalTrips = getSavedTrips();
+          const found = allLocalTrips.find((t) => t.id === tripId);
+          setTrip(found || null);
+        }
       } else {
         setTrip(null);
       }
@@ -389,10 +427,16 @@ export function useActiveTrip(tripId: string | null) {
   };
 
   useEffect(() => {
+    const handleUpdate = (changedTripId?: string) => {
+      if (!changedTripId || !tripId || changedTripId === tripId) {
+        syncState();
+      }
+    };
+
     syncState();
-    listeners.add(syncState);
+    listeners.add(handleUpdate);
     return () => {
-      listeners.delete(syncState);
+      listeners.delete(handleUpdate);
     };
   }, [tripId, user]);
 
@@ -400,7 +444,7 @@ export function useActiveTrip(tripId: string | null) {
   const updateActivities = async (dayNumber: number, activities: TripActivity[]) => {
     if (!trip) return;
     
-    // Optimistic UI update
+    // 1. Optimistic UI update (synchronous)
     const updatedItinerary = trip.itinerary.map((d) =>
       d.dayNumber === dayNumber ? { ...d, activities } : d
     );
@@ -408,46 +452,70 @@ export function useActiveTrip(tripId: string | null) {
     setTrip(updatedTrip);
 
     if (user && isSupabaseConfigured) {
-      try {
-        // Query the day record first
-        let { data: dayRec } = await supabase
-          .from("trip_days")
-          .select("id")
-          .eq("trip_id", trip.id)
-          .eq("day_number", dayNumber)
-          .single();
-
-        if (!dayRec) {
-          const { data: newDay } = await supabase
-            .from("trip_days")
-            .insert({ trip_id: trip.id, day_number: dayNumber })
-            .select("id")
-            .single();
-          dayRec = newDay;
-        }
-
-        if (dayRec) {
-          // Delete old activities
-          await supabase.from("activities").delete().eq("day_id", dayRec.id);
-          
-          // Re-insert sorted new activities
-          if (activities.length > 0) {
-            const insertData = activities.map((act, index) => ({
-              day_id: dayRec.id,
-              name: act.name,
-              description: act.description || "",
-              time: act.time || "Morning",
-              lat: act.lat,
-              lng: act.lng,
-              position: index
-            }));
-            await supabase.from("activities").insert(insertData);
-          }
-        }
-        emitChange();
-      } catch (err) {
-        console.error("Supabase activities update failed:", err);
+      // 2. Debounce Supabase writes to prevent race conditions during rapid reordering
+      const timerKey = `${trip.id}_${dayNumber}`;
+      if (supabaseActivitiesDebounceTimers[timerKey]) {
+        clearTimeout(supabaseActivitiesDebounceTimers[timerKey]);
       }
+
+      supabaseActivitiesDebounceTimers[timerKey] = setTimeout(async () => {
+        try {
+          // Query the day record first
+          const { data: dayRec, error: dayErr } = await supabase
+            .from("trip_days")
+            .select("id")
+            .eq("trip_id", trip.id)
+            .eq("day_number", dayNumber)
+            .single();
+
+          if (dayErr && dayErr.code !== "PGRST116") {
+            console.error("Supabase error querying trip day in updateActivities:", dayErr.message);
+          }
+
+          let resolvedDayRec = dayRec;
+          if (!resolvedDayRec) {
+            const { data: newDay, error: insertErr } = await supabase
+              .from("trip_days")
+              .insert({ trip_id: trip.id, day_number: dayNumber })
+              .select("id")
+              .single();
+            if (insertErr) {
+              console.error("Supabase error inserting trip day in updateActivities:", insertErr.message);
+            }
+            resolvedDayRec = newDay;
+          }
+
+          if (resolvedDayRec) {
+            // Delete old activities
+            const { error: deleteErr } = await supabase.from("activities").delete().eq("day_id", resolvedDayRec.id);
+            if (deleteErr) {
+              console.error("Supabase error deleting activities in updateActivities:", deleteErr.message);
+            }
+            
+            // Re-insert sorted new activities
+            if (activities.length > 0) {
+              const insertData = activities.map((act, index) => ({
+                day_id: resolvedDayRec.id,
+                name: act.name,
+                description: act.description || "",
+                time: act.time || "Morning",
+                lat: act.lat,
+                lng: act.lng,
+                position: index
+              }));
+              const { error: insertActErr } = await supabase.from("activities").insert(insertData);
+              if (insertActErr) {
+                console.error("Supabase error inserting activities in updateActivities:", insertActErr.message);
+              }
+            }
+          }
+          emitChange(trip.id);
+        } catch (err) {
+          console.error("Supabase activities update failed:", err);
+        } finally {
+          delete supabaseActivitiesDebounceTimers[timerKey];
+        }
+      }, 500);
     } else {
       updateLocalTripRecord(updatedTrip);
     }
@@ -459,7 +527,8 @@ export function useActiveTrip(tripId: string | null) {
     description: string,
     time = "Morning",
     lat?: number,
-    lng?: number
+    lng?: number,
+    imageUrl?: string
   ) => {
     if (!trip) return;
     const day = trip.itinerary.find((d) => d.dayNumber === dayNumber);
@@ -469,7 +538,8 @@ export function useActiveTrip(tripId: string | null) {
       description,
       time,
       lat,
-      lng
+      lng,
+      imageUrl
     };
     const currentActivities = day ? day.activities : [];
     await updateActivities(dayNumber, [...currentActivities, newActivity]);
@@ -493,8 +563,125 @@ export function useActiveTrip(tripId: string | null) {
     await updateActivities(dayNumber, filtered);
   };
 
+  const addDay = async (theme = "") => {
+    if (!trip) return;
+    const nextDayNum = trip.itinerary.length + 1;
+    const defaultTheme = theme || `Day ${nextDayNum}`;
+    const newDay: TripDay = {
+      dayNumber: nextDayNum,
+      theme: defaultTheme,
+      activities: []
+    };
+
+    const updatedItinerary = [...trip.itinerary, newDay];
+    const updatedTrip = {
+      ...trip,
+      days: nextDayNum,
+      itinerary: updatedItinerary
+    };
+
+    setTrip(updatedTrip);
+
+    if (user && isSupabaseConfigured) {
+      try {
+        const { error: dayErr } = await supabase
+          .from("trip_days")
+          .insert({
+            trip_id: trip.id,
+            day_number: nextDayNum,
+            theme: defaultTheme
+          });
+
+        if (dayErr) throw dayErr;
+
+        const { error: tripErr } = await supabase
+          .from("trips")
+          .update({ days: nextDayNum })
+          .eq("id", trip.id);
+
+        if (tripErr) throw tripErr;
+
+        emitChange(trip.id);
+      } catch (err) {
+        console.error("Failed to add day in Supabase:", err);
+      }
+    } else {
+      updateLocalTripRecord(updatedTrip);
+    }
+  };
+
+  const deleteDay = async (dayNumber: number) => {
+    if (!trip) return;
+
+    const filteredItinerary = trip.itinerary
+      .filter((d) => d.dayNumber !== dayNumber)
+      .map((d) => {
+        if (d.dayNumber > dayNumber) {
+          return { ...d, dayNumber: d.dayNumber - 1 };
+        }
+        return d;
+      });
+
+    const nextDaysCount = Math.max(0, trip.days - 1);
+    const updatedTrip = {
+      ...trip,
+      days: nextDaysCount,
+      itinerary: filteredItinerary
+    };
+
+    setTrip(updatedTrip);
+
+    if (user && isSupabaseConfigured) {
+      try {
+        const { error: delErr } = await supabase
+          .from("trip_days")
+          .delete()
+          .eq("trip_id", trip.id)
+          .eq("day_number", dayNumber);
+
+        if (delErr) throw delErr;
+
+        const { data: dbDays } = await supabase
+          .from("trip_days")
+          .select("id, day_number")
+          .eq("trip_id", trip.id)
+          .gt("day_number", dayNumber);
+
+        if (dbDays) {
+          const sortedDays = [...dbDays].sort((a, b) => a.day_number - b.day_number);
+          for (const d of sortedDays) {
+            await supabase
+              .from("trip_days")
+              .update({ day_number: d.day_number - 1 })
+              .eq("id", d.id);
+          }
+        }
+
+        await supabase
+          .from("trips")
+          .update({ days: nextDaysCount })
+          .eq("id", trip.id);
+
+        emitChange(trip.id);
+      } catch (err) {
+        console.error("Failed to delete day in Supabase:", err);
+      }
+    } else {
+      updateLocalTripRecord(updatedTrip);
+    }
+  };
+
   // Expenses CRUD operations
-  const addExpense = async (description: string, category: TripExpense["category"], amount: number, date?: string) => {
+  const addExpense = async (
+    description: string,
+    category: TripExpense["category"],
+    amount: number,
+    date?: string,
+    currency = "INR",
+    originalAmount?: number,
+    paidBy = "Kunth",
+    splitWith = ["Kunth", "Rahul", "Priya"]
+  ) => {
     if (!trip) return;
     const newExpense: TripExpense = {
       id: Math.random().toString(36).substring(2, 9),
@@ -502,6 +689,10 @@ export function useActiveTrip(tripId: string | null) {
       category,
       amount,
       date: date || new Date().toISOString().split("T")[0],
+      currency,
+      originalAmount: originalAmount !== undefined ? originalAmount : amount,
+      paidBy,
+      splitWith
     };
     const updatedExpenses = [...trip.expenses, newExpense];
     const updatedTrip = { ...trip, expenses: updatedExpenses };
@@ -512,7 +703,7 @@ export function useActiveTrip(tripId: string | null) {
         .from("trips")
         .update({ expenses: updatedExpenses })
         .eq("id", trip.id);
-      emitChange();
+      emitChange(trip.id);
     } else {
       updateLocalTripRecord(updatedTrip);
     }
@@ -529,7 +720,7 @@ export function useActiveTrip(tripId: string | null) {
         .from("trips")
         .update({ expenses: filtered })
         .eq("id", trip.id);
-      emitChange();
+      emitChange(trip.id);
     } else {
       updateLocalTripRecord(updatedTrip);
     }
@@ -545,7 +736,7 @@ export function useActiveTrip(tripId: string | null) {
         .from("trips")
         .update({ budget_limit: limit })
         .eq("id", trip.id);
-      emitChange();
+      emitChange(trip.id);
     } else {
       updateLocalTripRecord(updatedTrip);
     }
@@ -565,7 +756,7 @@ export function useActiveTrip(tripId: string | null) {
         .from("trips")
         .update({ packing_list: updatedList })
         .eq("id", trip.id);
-      emitChange();
+      emitChange(trip.id);
     } else {
       updateLocalTripRecord(updatedTrip);
     }
@@ -588,7 +779,7 @@ export function useActiveTrip(tripId: string | null) {
         .from("trips")
         .update({ packing_list: updatedList })
         .eq("id", trip.id);
-      emitChange();
+      emitChange(trip.id);
     } else {
       updateLocalTripRecord(updatedTrip);
     }
@@ -605,7 +796,7 @@ export function useActiveTrip(tripId: string | null) {
         .from("trips")
         .update({ packing_list: filtered })
         .eq("id", trip.id);
-      emitChange();
+      emitChange(trip.id);
     } else {
       updateLocalTripRecord(updatedTrip);
     }
@@ -632,7 +823,7 @@ export function useActiveTrip(tripId: string | null) {
         .from("trips")
         .update({ packing_list: generatedList })
         .eq("id", trip.id);
-      emitChange();
+      emitChange(trip.id);
     } else {
       updateLocalTripRecord(updatedTrip);
     }
@@ -653,7 +844,9 @@ export function useActiveTrip(tripId: string | null) {
     addPackingItem,
     deletePackingItem,
     setPackingSuggestions,
-    syncState
+    syncState,
+    addDay,
+    deleteDay
   };
 }
 

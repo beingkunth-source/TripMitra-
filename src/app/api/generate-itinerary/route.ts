@@ -56,9 +56,19 @@ Each day should have exactly 3 activities with real, specific place names in ${d
 
     const geminiData = await callGemini(prompt);
     if (geminiData?.days?.length) {
+      // Guarantee every activity has a distinct 'time' field
+      const postProcessedDays = geminiData.days.slice(0, generatedDays).map((day: any) => ({
+        ...day,
+        theme: day.theme || `Day ${day.dayNumber}`,
+        activities: (day.activities || []).map((act: any, idx: number) => ({
+          ...act,
+          time: act.time || (idx === 0 ? "Morning" : idx === 1 ? "Afternoon" : "Evening")
+        }))
+      }));
+
       const responsePayload = {
         ...geminiData,
-        days: geminiData.days.slice(0, generatedDays),
+        days: postProcessedDays,
         requestedDays,
         generatedDays,
         note: longTripNote,
@@ -90,7 +100,8 @@ Each day should have exactly 3 activities with real, specific place names in ${d
         theme: themes[(d - 1) % themes.length],
         activities: names.map((name, idx) => ({
           name: `${destination} ${name}`,
-          description: `Day ${d} ${idx === 0 ? 'morning' : idx === 1 ? 'afternoon' : 'evening'} experience designed around a unique area of ${destination}.`
+          description: `Day ${d} ${idx === 0 ? 'morning' : idx === 1 ? 'afternoon' : 'evening'} experience designed around a unique area of ${destination}.`,
+          time: idx === 0 ? "Morning" : idx === 1 ? "Afternoon" : "Evening"
         })),
       });
     }

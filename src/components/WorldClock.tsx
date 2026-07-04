@@ -23,40 +23,25 @@ export default function WorldClock() {
     function updateClocks() {
       const now = new Date();
       const updated: Record<string, string> = {};
-
       CLOCK_ZONES.forEach((zone) => {
         try {
-          const formatter = new Intl.DateTimeFormat("en-US", {
+          updated[zone.city] = new Intl.DateTimeFormat("en-US", {
             timeZone: zone.timeZone,
             hour: "2-digit",
             minute: "2-digit",
-            second: "2-digit",
             hour12: true,
-          });
-          updated[zone.city] = formatter.format(now);
+          }).format(now);
         } catch {
-          updated[zone.city] = now.toLocaleTimeString();
+          updated[zone.city] = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         }
       });
-
-      // Also support dynamically loading local time based on system locale
-      try {
-        const localFormatter = new Intl.DateTimeFormat("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        });
-        updated["Local Time"] = localFormatter.format(now);
-      } catch {
-        updated["Local Time"] = now.toLocaleTimeString();
-      }
-
       setTimes(updated);
     }
 
     updateClocks();
-    const interval = setInterval(updateClocks, 1000);
+    // Minute-level updates — seconds are unnecessary precision for a travel app
+    // and caused a re-render storm every second.
+    const interval = setInterval(updateClocks, 60_000);
     return () => clearInterval(interval);
   }, []);
 

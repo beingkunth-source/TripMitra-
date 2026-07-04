@@ -47,6 +47,12 @@ Keep the suggestions short (4-8 words). Do not use markdown blocks, just raw JSO
     } else if (lowerMessage.includes("budget") || lowerMessage.includes("cost") || lowerMessage.includes("price") || lowerMessage.includes("expensive")) {
       reply = `To optimize your budget in **${destination || "your destination"}**, utilize public transit (subways, buses) and explore free entry days at local galleries. Check the **Budget Page** for a full expense ledger and automatic spending alerts.`;
       suggestions = ["Free things to do", "Transit options"];
+    } else if (lowerMessage.includes("sightsee") || lowerMessage.includes("recommend") || lowerMessage.includes("visit") || lowerMessage.includes("see") || lowerMessage.includes("attraction")) {
+      reply = `In **${destination || "your destination"}**, I highly recommend visiting the historic city center, walking through local cultural heritage markets, and exploring the iconic viewpoints. You can add these directly to your day-by-day planner stops!`;
+      suggestions = ["Top local eateries", "Best photo locations", "Transit options"];
+    } else if (lowerMessage.includes("visa") || lowerMessage.includes("passport") || lowerMessage.includes("document") || lowerMessage.includes("entry requirements")) {
+      reply = `Visa requirements for **${destination || "your destination"}** depend heavily on your traveler nationality. I recommend visiting the official immigration or consulate website of ${destination || "the destination country"} to verify current entry guidelines, visa-on-arrival terms, and passport validity requirements before booking flights.`;
+      suggestions = ["Flight ticket deals", "Workspace Settings"];
     } else {
       reply = `Hi! I'm your **TripMitra AI Assistant**. I can help you plan your itinerary for **${destination || "your destination"}**, recommend hotels or flights, suggest packing items, and give local weather advice. What would you like to explore next?`;
       suggestions = ["Recommend sightseeing", "Packing tips", "Flight ticket prices"];

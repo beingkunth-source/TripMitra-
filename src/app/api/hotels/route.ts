@@ -64,8 +64,14 @@ export async function GET(request: Request) {
       return NextResponse.json(data);
     }
 
+    if (data && data.error) {
+      console.error(`[SerpAPI Hotels API Error] SerpAPI returned an error code/message: "${data.error}"`);
+    } else {
+      console.error(`[SerpAPI Hotels Format Error] Request succeeded but returned no properties. Response keys: ${data ? Object.keys(data).join(", ") : "null"}`);
+    }
+
     // Failover Mock Data
-    console.warn(`SerpAPI hotels query failed or returned no results for "${q}". Returning mock hotels failover.`);
+    console.warn(`SerpAPI hotels query failed. Returning mock hotels failover.`);
     const mockFailover = {
       properties: [
         {
@@ -94,7 +100,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(mockFailover);
   } catch (error: any) {
-    console.error("Error fetching hotels:", error);
-    return NextResponse.json({ error: "Failed to fetch hotels" }, { status: 500 });
+    console.error("[SerpAPI Hotels Exception] Failed to execute hotel query:", error);
+    return NextResponse.json({ error: `Failed to fetch hotels: ${error.message}` }, { status: 500 });
   }
 }

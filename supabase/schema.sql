@@ -4,6 +4,42 @@
 -- Enable UUID extension if not enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing policies to avoid "already exists" conflicts when running this script repeatedly
+DROP POLICY IF EXISTS "Allow public read-only profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow users to update own profile" ON public.profiles;
+
+DROP POLICY IF EXISTS "Allow owners and collaborators to select trips" ON public.trips;
+DROP POLICY IF EXISTS "Allow authenticated users to insert trips" ON public.trips;
+DROP POLICY IF EXISTS "Allow owners and collaborator-editors to update trips" ON public.trips;
+DROP POLICY IF EXISTS "Allow owner to delete trips" ON public.trips;
+
+DROP POLICY IF EXISTS "Allow members of a trip to select collaborators" ON public.trip_collaborators;
+DROP POLICY IF EXISTS "Allow owners to insert/update/delete collaborators" ON public.trip_collaborators;
+DROP POLICY IF EXISTS "Allow owners to manage collaborators" ON public.trip_collaborators;
+
+DROP POLICY IF EXISTS "Allow trip members to select trip days" ON public.trip_days;
+DROP POLICY IF EXISTS "Allow trip editors to insert/update/delete trip days" ON public.trip_days;
+
+DROP POLICY IF EXISTS "Allow trip members to select activities" ON public.activities;
+DROP POLICY IF EXISTS "Allow trip editors to modify activities" ON public.activities;
+
+DROP POLICY IF EXISTS "Allow all select on destinations" ON public.destinations;
+
+DROP POLICY IF EXISTS "Allow trip members to modify hotels" ON public.hotels;
+
+DROP POLICY IF EXISTS "Allow trip members to modify flights" ON public.flights;
+
+DROP POLICY IF EXISTS "Allow anyone to read reviews" ON public.reviews;
+DROP POLICY IF EXISTS "Allow authenticated users to write own reviews" ON public.reviews;
+DROP POLICY IF EXISTS "Allow owner to modify reviews" ON public.reviews;
+DROP POLICY IF EXISTS "Allow owner to delete reviews" ON public.reviews;
+
+DROP POLICY IF EXISTS "Allow users to manage own notifications" ON public.notifications;
+
+DROP POLICY IF EXISTS "Allow users to manage own saved_trips" ON public.saved_trips;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
 --------------------------------------------------------------------------------
 -- 1. PROFILES
 --------------------------------------------------------------------------------
@@ -64,17 +100,55 @@ CREATE TABLE IF NOT EXISTS public.trip_collaborators (
 ALTER TABLE public.trip_collaborators ENABLE ROW LEVEL SECURITY;
 
 --------------------------------------------------------------------------------
--- TRIP ACCESS RLS POLICIES FOR TRIPS & COLLABORATORS
+-- TRIP ACCESS SECURITY DEFINER HELPERS & POLICIES
 --------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_trip_member(trip_uuid uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.trips
+    WHERE id = trip_uuid AND user_id = auth.uid()
+  ) OR EXISTS (
+    SELECT 1 FROM public.trip_collaborators
+    WHERE trip_id = trip_uuid AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION public.is_trip_editor(trip_uuid uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.trips
+    WHERE id = trip_uuid AND user_id = auth.uid()
+  ) OR EXISTS (
+    SELECT 1 FROM public.trip_collaborators
+    WHERE trip_id = trip_uuid AND user_id = auth.uid() AND role = 'editor'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION public.is_trip_owner(trip_uuid uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.trips
+    WHERE id = trip_uuid AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION public.get_trip_id_for_day(day_uuid uuid)
+RETURNS uuid AS $$
+BEGIN
+  RETURN (SELECT trip_id FROM public.trip_days WHERE id = day_uuid);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- Trips Policies
 CREATE POLICY "Allow owners and collaborators to select trips"
   ON public.trips FOR SELECT
-  USING (
-    auth.uid() = user_id OR
-    EXISTS (
-      SELECT 1 FROM public.trip_collaborators
-      WHERE trip_collaborators.trip_id = trips.id AND trip_collaborators.user_id = auth.uid()
-    )
-  );
+  USING (auth.uid() = user_id OR public.is_trip_member(id));
 
 CREATE POLICY "Allow authenticated users to insert trips"
   ON public.trips FOR INSERT
@@ -82,15 +156,7 @@ CREATE POLICY "Allow authenticated users to insert trips"
 
 CREATE POLICY "Allow owners and collaborator-editors to update trips"
   ON public.trips FOR UPDATE
-  USING (
-    auth.uid() = user_id OR
-    EXISTS (
-      SELECT 1 FROM public.trip_collaborators
-      WHERE trip_collaborators.trip_id = trips.id 
-        AND trip_collaborators.user_id = auth.uid() 
-        AND trip_collaborators.role = 'editor'
-    )
-  );
+  USING (auth.uid() = user_id OR public.is_trip_editor(id));
 
 CREATE POLICY "Allow owner to delete trips"
   ON public.trips FOR DELETE
@@ -99,24 +165,11 @@ CREATE POLICY "Allow owner to delete trips"
 -- Collaborators Policies
 CREATE POLICY "Allow members of a trip to select collaborators"
   ON public.trip_collaborators FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.trips
-      WHERE trips.id = trip_collaborators.trip_id AND (trips.user_id = auth.uid() OR EXISTS (
-        SELECT 1 FROM public.trip_collaborators tc
-        WHERE tc.trip_id = trips.id AND tc.user_id = auth.uid()
-      ))
-    )
-  );
+  USING (public.is_trip_member(trip_id));
 
-CREATE POLICY "Allow owners to insert/update/delete collaborators"
+CREATE POLICY "Allow owners to manage collaborators"
   ON public.trip_collaborators FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.trips
-      WHERE trips.id = trip_collaborators.trip_id AND trips.user_id = auth.uid()
-    )
-  );
+  USING (public.is_trip_owner(trip_id));
 
 --------------------------------------------------------------------------------
 -- 4. TRIP DAYS
@@ -133,28 +186,11 @@ ALTER TABLE public.trip_days ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow trip members to select trip days"
   ON public.trip_days FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.trips
-      WHERE trips.id = trip_days.trip_id AND (trips.user_id = auth.uid() OR EXISTS (
-        SELECT 1 FROM public.trip_collaborators WHERE trip_collaborators.trip_id = trips.id AND trip_collaborators.user_id = auth.uid()
-      ))
-    )
-  );
+  USING (public.is_trip_member(trip_id));
 
 CREATE POLICY "Allow trip editors to insert/update/delete trip days"
   ON public.trip_days FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.trips
-      WHERE trips.id = trip_days.trip_id AND (trips.user_id = auth.uid() OR EXISTS (
-        SELECT 1 FROM public.trip_collaborators 
-        WHERE trip_collaborators.trip_id = trips.id 
-          AND trip_collaborators.user_id = auth.uid() 
-          AND trip_collaborators.role = 'editor'
-      ))
-    )
-  );
+  USING (public.is_trip_editor(trip_id));
 
 --------------------------------------------------------------------------------
 -- 5. ACTIVITIES
@@ -174,30 +210,11 @@ ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow trip members to select activities"
   ON public.activities FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.trip_days
-      JOIN public.trips ON trips.id = trip_days.trip_id
-      WHERE trip_days.id = activities.day_id AND (trips.user_id = auth.uid() OR EXISTS (
-        SELECT 1 FROM public.trip_collaborators WHERE trip_collaborators.trip_id = trips.id AND trip_collaborators.user_id = auth.uid()
-      ))
-    )
-  );
+  USING (public.is_trip_member(public.get_trip_id_for_day(day_id)));
 
 CREATE POLICY "Allow trip editors to modify activities"
   ON public.activities FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.trip_days
-      JOIN public.trips ON trips.id = trip_days.trip_id
-      WHERE trip_days.id = activities.day_id AND (trips.user_id = auth.uid() OR EXISTS (
-        SELECT 1 FROM public.trip_collaborators 
-        WHERE trip_collaborators.trip_id = trips.id 
-          AND trip_collaborators.user_id = auth.uid() 
-          AND trip_collaborators.role = 'editor'
-      ))
-    )
-  );
+  USING (public.is_trip_editor(public.get_trip_id_for_day(day_id)));
 
 --------------------------------------------------------------------------------
 -- 6. DESTINATIONS (Pre-seeded static carousel & lookup)

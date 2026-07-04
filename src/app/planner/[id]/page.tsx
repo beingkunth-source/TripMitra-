@@ -6,12 +6,14 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Calendar, Users, MapPin, Plus, Trash2, Edit3, ChevronDown, ChevronUp,
-  CloudSun, Briefcase, DollarSign, Navigation, Hotel, PlusCircle, ArrowUpDown
+  CloudSun, Briefcase, DollarSign, Navigation, Hotel, PlusCircle, ArrowUpDown,
+  Sparkles, MessageSquare, Send, Globe
 } from "lucide-react";
 import { useActiveTrip, TripActivity, updateTripRecord } from "@/lib/store";
 import ExportButtons from "@/components/ExportButtons";
 import AIChatAssistant from "@/components/AIChatAssistant";
 import ImageWithFallback from "@/components/ImageWithFallback";
+import TripHeader from "@/components/TripHeader";
 
 // Dynamic Import for Leaflet Map to avoid SSR 'window is not defined' compilation errors
 const Map = dynamic(() => import("@/components/Map"), { 
@@ -38,6 +40,9 @@ export default function PlannerPage() {
     deletePackingItem,
     setPackingSuggestions,
     addExpense,
+    updateActivities,
+    addDay,
+    deleteDay,
   } = useActiveTrip(tripId);
 
   // Active UI States
@@ -54,7 +59,64 @@ export default function PlannerPage() {
   const [stopName, setStopName] = useState("");
   const [stopDesc, setStopDesc] = useState("");
   const [stopTime, setStopTime] = useState("Morning");
+  const [stopImageUrl, setStopImageUrl] = useState("");
+  const [journalMode, setJournalMode] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<TripActivity | null>(null);
+
+  // Image Search States
+  const [isSearchingImages, setIsSearchingImages] = useState(false);
+  const [imageSearchResults, setImageSearchResults] = useState<{ title: string; thumbnail: string; original: string }[]>([]);
+
+  // Border Check State
+  const [isInternational, setIsInternational] = useState<boolean | null>(null);
+
+  // Geocoding State
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  // AI Stop Suggestions States
+  const [isSuggestingStops, setIsSuggestingStops] = useState(false);
+  const [aiStopSuggestions, setAiStopSuggestions] = useState<{ name: string; description: string; time: string }[]>([]);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!trip?.destination) return;
+    const checkBorder = async () => {
+      try {
+        const res = await fetch("/api/check-border", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            origin: trip.originCity || "Mumbai",
+            destination: trip.destination
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIsInternational(data.isInternational);
+        }
+      } catch (err) {
+        console.error("Failed to check border:", err);
+      }
+    };
+    checkBorder();
+  }, [trip?.destination, trip?.originCity]);
+
+  const handleSearchImages = async (queryText: string) => {
+    const q = queryText || trip?.destination || "";
+    if (!q.trim()) return;
+    setIsSearchingImages(true);
+    try {
+      const res = await fetch(`/api/search-images?q=${encodeURIComponent(q)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setImageSearchResults(data.images || []);
+      }
+    } catch (err) {
+      console.error("Failed to search images:", err);
+    } finally {
+      setIsSearchingImages(false);
+    }
+  };
 
   // Weather States
   const [weatherForecast, setWeatherForecast] = useState<any>(null);
@@ -69,6 +131,45 @@ export default function PlannerPage() {
 
   // Packing List input
   const [newPackingText, setNewPackingText] = useState("");
+
+  // Chat Panel States
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    { sender: "Rahul", text: "Hey! Did we finalize the hotel details?" },
+    { sender: "Priya", text: "Yeah, Park Hyatt looks great. Just added the budget allocation!" },
+    { sender: "Rahul", text: "Awesome. I'll check out the flights tonight." }
+  ]);
+
+  const handleSendChatMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    setChatMessages(prev => [...prev, { sender: "Kunth", text: chatInput.trim() }]);
+    setChatInput("");
+  };
+
+  const handleFocusAIAssistant = () => {
+    setActiveSidebarTab("assistant");
+    const el = document.getElementById("sidebar-utilities-container");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const moveActivity = async (dayNumber: number, index: number, direction: "up" | "down") => {
+    if (!trip) return;
+    const day = trip.itinerary.find((d) => d.dayNumber === dayNumber);
+    if (!day) return;
+    const activities = [...day.activities];
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= activities.length) return;
+
+    const temp = activities[index];
+    activities[index] = activities[targetIdx];
+    activities[targetIdx] = temp;
+
+    await updateActivities(dayNumber, activities);
+  };
 
   // Fetch Weather Forecast and TripAdvisor Deals on Destination change
   useEffect(() => {
@@ -170,54 +271,73 @@ export default function PlannerPage() {
     fetchPackingSuggestions();
   }, [trip?.destination, trip?.packingList.length]);
 
-  // Auto-geocode initial generated activities if coordinates are missing
+  // Auto-geocode initial generated activities if coordinates are missing.
+  // Dependency: serialised list of IDs that still lack coords — so this only
+  // re-fires when new unresolved activities appear, not on every trip update.
+  const missingCoordIds = trip?.itinerary
+    .flatMap((d) => d.activities)
+    .filter((a) => typeof a.lat !== "number" || typeof a.lng !== "number")
+    .map((a) => a.id)
+    .join(",") ?? "";
+
   useEffect(() => {
-    if (!trip) return;
-
-    // Check if there are any activities missing coordinates
-    const hasMissing = trip.itinerary.some(day => 
-      day.activities.some(act => typeof act.lat !== "number" || typeof act.lng !== "number")
-    );
-
-    if (!hasMissing) return;
+    if (!trip || !missingCoordIds) return;
 
     const geocodeItinerary = async () => {
+      setIsGeocoding(true);
+      const missingCount = missingCoordIds.split(",").length;
+      console.log(`[planner] Auto-geocoding ${missingCount} activities sequentially in "${trip.destination}"…`);
+      
       let updated = false;
-      const updatedItinerary = await Promise.all(
-        trip.itinerary.map(async (day) => {
-          const updatedActivities = await Promise.all(
-            day.activities.map(async (act) => {
-              if (typeof act.lat === "number" && typeof act.lng === "number") {
-                return act;
-              }
-              try {
-                const res = await fetch(
-                  `/api/geocode?place=${encodeURIComponent(act.name)}&location=${encodeURIComponent(
-                    trip.destination
-                  )}`
-                );
-                if (res.ok) {
-                  const coords = await res.json();
-                  updated = true;
-                  return { ...act, lat: coords.lat, lng: coords.lng };
-                }
-              } catch (err) {
-                console.error("Geocoding failed for:", act.name, err);
-              }
-              return act;
-            })
-          );
-          return { ...day, activities: updatedActivities };
-        })
-      );
+      const updatedItinerary = [];
 
-      if (updated) {
-        updateTripRecord({ ...trip, itinerary: updatedItinerary });
+      try {
+        for (const day of trip.itinerary) {
+          const updatedActivities = [];
+          for (const act of day.activities) {
+            if (typeof act.lat === "number" && typeof act.lng === "number") {
+              updatedActivities.push(act);
+              continue;
+            }
+            try {
+              const url = `/api/geocode?place=${encodeURIComponent(act.name)}&location=${encodeURIComponent(trip.destination)}`;
+              const res = await fetch(url);
+              if (res.ok) {
+                const coords = await res.json();
+                console.log(`[planner] Sequential geocode hit for "${act.name}" → lat: ${coords.lat?.toFixed(5)}, lng: ${coords.lng?.toFixed(5)} (distinct check)`);
+                updated = true;
+                updatedActivities.push({ ...act, lat: coords.lat, lng: coords.lng });
+              } else {
+                console.warn(`[planner] Geocode HTTP ${res.status} for "${act.name}"`);
+                updatedActivities.push(act);
+              }
+            } catch (err) {
+              console.error(`[planner] Geocoding failed for "${act.name}":`, err);
+              updatedActivities.push(act);
+            }
+          }
+          updatedItinerary.push({ ...day, activities: updatedActivities });
+        }
+
+        if (updated) {
+          // Log all resolved coordinates to console to verify they are distinct before rendering
+          console.log("[planner] Final resolved geocoded positions check:");
+          updatedItinerary.forEach((day) => {
+            day.activities.forEach((act) => {
+              console.log(`  Activity: "${act.name}" | Coord: ${act.lat ?? "N/A"}, ${act.lng ?? "N/A"}`);
+            });
+          });
+          updateTripRecord({ ...trip, itinerary: updatedItinerary });
+        }
+      } finally {
+        setIsGeocoding(false);
       }
     };
 
     geocodeItinerary();
-  }, [trip]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missingCoordIds, trip?.destination]);
+
 
   if (!trip) {
     return (
@@ -241,6 +361,10 @@ export default function PlannerPage() {
     setStopName("");
     setStopDesc("");
     setStopTime("Morning");
+    setStopImageUrl("");
+    setImageSearchResults([]);
+    setAiStopSuggestions([]);
+    setSuggestError(null);
     setShowAddModal(true);
   };
 
@@ -250,7 +374,46 @@ export default function PlannerPage() {
     setStopName(activity.name);
     setStopDesc(activity.description);
     setStopTime(activity.time || "Morning");
+    setStopImageUrl(activity.imageUrl || "");
+    setImageSearchResults([]);
     setShowEditModal(true);
+  };
+
+  const fetchAiStopSuggestions = async () => {
+    if (!trip) return;
+    setIsSuggestingStops(true);
+    setSuggestError(null);
+    try {
+      const activeDayData = trip.itinerary.find((d) => d.dayNumber === targetDay);
+      const existingActivities = activeDayData?.activities.map((a) => a.name) || [];
+      const allTripActivities = trip.itinerary.flatMap((d) => d.activities).map((a) => a.name);
+
+      const res = await fetch("/api/suggest-stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destination: trip.destination,
+          dayNumber: targetDay,
+          dayTheme: activeDayData?.theme || "",
+          existingActivities,
+          allTripActivities
+        })
+      });
+
+      if (!res.ok) throw new Error("API error");
+
+      const data = await res.json();
+      if (data.suggestions && data.suggestions.length > 0) {
+        setAiStopSuggestions(data.suggestions);
+      } else {
+        setSuggestError("Could not fetch suggestions, try again");
+      }
+    } catch (err) {
+      console.error("AI Stop suggestion failed:", err);
+      setSuggestError("Could not fetch suggestions, try again");
+    } finally {
+      setIsSuggestingStops(false);
+    }
   };
 
   // Geocode & Save Stops
@@ -258,26 +421,23 @@ export default function PlannerPage() {
     e.preventDefault();
     if (!stopName.trim()) return;
 
-    setShowAddModal(false);
-    
     try {
       const geoRes = await fetch(`/api/geocode?place=${encodeURIComponent(stopName)}&location=${encodeURIComponent(trip.destination)}`);
       if (geoRes.ok) {
         const coords = await geoRes.json();
-        addActivity(targetDay, stopName, stopDesc, stopTime, coords.lat, coords.lng);
+        addActivity(targetDay, stopName, stopDesc, stopTime, coords.lat, coords.lng, stopImageUrl.trim() || undefined);
+        setShowAddModal(false); // Only close modal on successful geocoding
       } else {
-        addActivity(targetDay, stopName, stopDesc, stopTime);
+        alert("Could not find this location, try a more specific name");
       }
     } catch {
-      addActivity(targetDay, stopName, stopDesc, stopTime);
+      alert("Could not find this location, try a more specific name");
     }
   };
 
   const handleSaveEditStop = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stopName.trim() || !selectedActivity) return;
-
-    setShowEditModal(false);
 
     try {
       const geoRes = await fetch(`/api/geocode?place=${encodeURIComponent(stopName)}&location=${encodeURIComponent(trip.destination)}`);
@@ -289,20 +449,14 @@ export default function PlannerPage() {
           time: stopTime,
           lat: coords.lat,
           lng: coords.lng,
+          imageUrl: stopImageUrl.trim() || undefined
         });
+        setShowEditModal(false); // Only close modal on successful geocoding
       } else {
-        editActivity(targetDay, selectedActivity.id, {
-          name: stopName,
-          description: stopDesc,
-          time: stopTime,
-        });
+        alert("Could not find this location, try a more specific name");
       }
     } catch {
-      editActivity(targetDay, selectedActivity.id, {
-        name: stopName,
-        description: stopDesc,
-        time: stopTime,
-      });
+      alert("Could not find this location, try a more specific name");
     }
   };
 
@@ -331,30 +485,16 @@ export default function PlannerPage() {
   const activeDayActivities = trip.itinerary.find((d) => d.dayNumber === activeDay)?.activities || [];
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto px-4 py-6 md:py-10 text-gray-800">
+    <div className="relative w-full max-w-7xl mx-auto px-4 pt-20 pb-6 md:pt-32 md:pb-10 text-gray-800">
       
       {/* HEADER CONTROLS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-gray-200 pb-6">
-        <div>
-          <span className="inline-flex items-center gap-1 text-xs text-indigo-600 font-bold bg-indigo-500/5 px-2.5 py-0.5 rounded-full mb-2">
-            Trip Active • {trip.days} Days Itinerary
-          </span>
-          <h1 className="text-2xl md:text-4xl font-extrabold font-display text-gray-900">{trip.destination}</h1>
-          <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-pink-500" /> Origin: {trip.originCity}</span>
-            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-indigo-500" /> Start: {trip.startDate}</span>
-            <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-teal-600" /> {trip.travelers} Pax</span>
-          </div>
-        </div>
-
-        <ExportButtons trip={trip} />
-      </div>
+      <TripHeader trip={trip} isInternational={isInternational} />
 
       {/* THREE COLUMN WORKSPACE */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[70vh]">
+      <div className="grid grid-cols-1 lg:grid-cols-[30%_45%_25%] gap-6 min-h-[70vh]">
         
         {/* COLUMN 1: DAY TIMELINE FEED */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold font-display uppercase tracking-wider text-gray-500">Day Timeline</h2>
             <span className="text-[10px] text-gray-400">Click day tab to focus map</span>
@@ -370,7 +510,7 @@ export default function PlannerPage() {
                   key={day.dayNumber}
                   className={`rounded-2xl border transition-all duration-300 ${
                     isActive 
-                      ? "border-indigo-500/30 bg-indigo-50/50" 
+                      ? "border-teal-500/30 bg-teal-50/50" 
                       : "border-gray-200 bg-white hover:border-gray-300"
                   }`}
                 >
@@ -388,16 +528,31 @@ export default function PlannerPage() {
                       </h3>
                       <p className="text-[10px] text-gray-500 mt-0.5">{day.theme || "Sightseeing"}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           openAddModal(day.dayNumber);
                         }}
-                        className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-indigo-600"
+                        className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-teal-600"
                         title="Add Activity Stop"
                       >
                         <Plus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const confirmDelete = confirm(
+                            `Are you sure you want to delete Day ${day.dayNumber}? This will permanently remove all of its activities.`
+                          );
+                          if (confirmDelete) {
+                            deleteDay(day.dayNumber);
+                          }
+                        }}
+                        className="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        title={`Delete Day ${day.dayNumber}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                       {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                     </div>
@@ -412,41 +567,163 @@ export default function PlannerPage() {
                         </div>
                       ) : (
                         day.activities.map((act, index) => (
-                          <div
-                            key={act.id}
-                            className="group flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
-                          >
-                            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-600">
-                              {index + 1}
-                            </span>
-                            <div className="flex-1 min-w-0 text-left">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-xs font-bold text-gray-800 truncate">{act.name}</h4>
-                                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          journalMode ? (
+                            <div
+                              key={act.id}
+                              className="group relative flex flex-col gap-3.5 p-4.5 rounded-2xl border-2 border-dashed border-amber-200 bg-[#FFFDF9] hover:shadow-md transition-all text-left"
+                            >
+                              {/* Scrapbook Tape Deco */}
+                              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-12 h-4 bg-amber-100/75 border border-amber-200/50 rotate-2 shadow-xs pointer-events-none" />
+                              
+                              <div className="flex items-start justify-between mt-1">
+                                <div>
+                                  <h4 className="text-xs font-black text-gray-800 font-display flex items-center gap-1">
+                                    <span>📍</span> {act.name}
+                                  </h4>
+                                  {act.time && (
+                                    <span className="inline-block px-1.5 py-0.5 text-[8.5px] font-bold bg-amber-100/50 text-amber-800 rounded mt-0.5 uppercase tracking-wide">
+                                      {act.time}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1">
                                   <button
+                                    type="button"
                                     onClick={() => openEditModal(day.dayNumber, act)}
-                                    className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800"
-                                    title="Edit Stop"
+                                    className="p-1 hover:bg-amber-100/50 rounded text-gray-400 hover:text-gray-800"
+                                    title="Edit Scrapbook Entry"
                                   >
-                                    <Edit3 className="w-3 h-3" />
+                                    <Edit3 className="w-3.5 h-3.5" />
                                   </button>
                                   <button
+                                    type="button"
                                     onClick={() => deleteActivity(day.dayNumber, act.id)}
-                                    className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-pink-600"
-                                    title="Delete Stop"
+                                    className="p-1 hover:bg-amber-150 rounded text-gray-400 hover:text-pink-650"
+                                    title="Delete Scrapbook Entry"
                                   >
-                                    <Trash2 className="w-3 h-3" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               </div>
-                              <p className="text-[10px] text-gray-500 mt-1 leading-normal">{act.description}</p>
-                              {act.time && (
-                                <span className="inline-block px-1.5 py-0.5 mt-2 text-[9px] font-bold bg-indigo-500/5 text-pink-600 rounded">
-                                  {act.time}
-                                </span>
+
+                              {/* Stop Cover Image */}
+                              {act.imageUrl ? (
+                                <div className="relative w-full h-32 rounded-lg overflow-hidden border border-gray-150 shadow-inner">
+                                  <ImageWithFallback
+                                    src={act.imageUrl}
+                                    alt={act.name}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-full py-5 px-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/50 text-center text-[10px] text-gray-400 italic">
+                                  No memory photo attached. Edit stop to add a URL!
+                                </div>
                               )}
+
+                              {/* Star Rating Selector (1-5 stars) */}
+                              <div className="flex flex-col gap-1.5">
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Memory Rating</span>
+                                <div className="flex gap-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                      key={star}
+                                      type="button"
+                                      onClick={() => editActivity(day.dayNumber, act.id, { rating: star })}
+                                      className={`text-base transition-transform active:scale-125 ${
+                                        star <= (act.rating || 0) ? "text-amber-500 scale-110" : "text-gray-200 hover:text-amber-300"
+                                      }`}
+                                    >
+                                      ★
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Memory Memo Notes */}
+                              <div className="flex flex-col gap-1.5">
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Travel Memo</span>
+                                <textarea
+                                  value={act.notes || ""}
+                                  onChange={(e) => editActivity(day.dayNumber, act.id, { notes: e.target.value })}
+                                  placeholder="Write down your favorite memories, lessons learned, or stories from this stop..."
+                                  rows={2}
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-amber-100 bg-amber-50/20 text-[10.5px] placeholder-amber-800/40 text-gray-800 focus:outline-none focus:border-amber-300 focus:bg-amber-50/40 leading-normal resize-none"
+                                />
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <div
+                              key={act.id}
+                              className="group flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
+                            >
+                              <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold bg-teal-500/10 text-teal-600">
+                                {index + 1}
+                              </span>
+                              <div className="flex-1 min-w-0 text-left">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-xs font-bold text-gray-800 truncate">{act.name}</h4>
+                                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {index > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => moveActivity(day.dayNumber, index, "up")}
+                                        className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800"
+                                        title="Move Up"
+                                      >
+                                        <ChevronUp className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                    {index < day.activities.length - 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => moveActivity(day.dayNumber, index, "down")}
+                                        className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800"
+                                        title="Move Down"
+                                      >
+                                        <ChevronDown className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditModal(day.dayNumber, act)}
+                                      className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800"
+                                      title="Edit Stop"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteActivity(day.dayNumber, act.id)}
+                                      className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-pink-600"
+                                      title="Delete Stop"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {act.imageUrl && (
+                                  <div className="relative w-full h-24 rounded-lg overflow-hidden my-2 border border-gray-150 shadow-xs">
+                                    <ImageWithFallback
+                                      src={act.imageUrl}
+                                      alt={act.name}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                )}
+
+                                <p className="text-[10px] text-gray-500 mt-1 leading-normal">{act.description}</p>
+                                {act.time && (
+                                  <span className="inline-block px-1.5 py-0.5 mt-2 text-[9px] font-bold bg-coral-500/5 text-coral-600 rounded">
+                                    {act.time}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )
                         ))
                       )}
                     </div>
@@ -454,11 +731,25 @@ export default function PlannerPage() {
                 </div>
               );
             })}
+            
+            {/* Add Day Button */}
+            <button
+              onClick={() => {
+                const themeInput = prompt("Enter a theme/focus for this day (optional):");
+                if (themeInput !== null) {
+                  addDay(themeInput.trim());
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl border-2 border-dashed border-slate-200 dark:border-teal-500/20 hover:border-teal-500/50 bg-slate-50/50 dark:bg-teal-950/10 hover:bg-teal-500/5 transition-all text-xs font-bold text-slate-600 dark:text-teal-350 hover:text-teal-700 dark:hover:text-teal-200 active:scale-[0.99] shadow-sm mt-1"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Day to Itinerary</span>
+            </button>
           </div>
         </div>
 
         {/* COLUMN 2: LEAFLET INTERACTIVE ROUTING MAP */}
-        <div className="lg:col-span-4 h-[400px] lg:h-auto min-h-[400px] lg:max-h-[70vh]">
+        <div className="h-[400px] lg:h-auto min-h-[400px] lg:max-h-[70vh]">
           <Map 
             activities={activeDayActivities} 
             destination={trip.destination} 
@@ -467,17 +758,18 @@ export default function PlannerPage() {
                 ? { lat: activeDayActivities[0].lat, lng: activeDayActivities[0].lng }
                 : null
             }
+            isGeocoding={isGeocoding}
           />
         </div>
 
         {/* COLUMN 3: SIDEBAR UTILITIES TABS */}
-        <div className="lg:col-span-4 flex flex-col gap-4 max-h-[70vh]">
+        <div id="sidebar-utilities-container" className="flex flex-col gap-4 max-h-[70vh]">
           {/* Sidebar Tab Header */}
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-gray-50 border border-gray-250 text-xs font-bold w-full">
             <button
               onClick={() => setActiveSidebarTab("places")}
               className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
-                activeSidebarTab === "places" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
+                activeSidebarTab === "places" ? "bg-white text-teal-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
               }`}
             >
               Stops
@@ -513,7 +805,7 @@ export default function PlannerPage() {
             <div className="flex-1 overflow-y-auto space-y-4 pr-1">
               <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm text-left">
                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5 text-indigo-600" />
+                  <Navigation className="w-3.5 h-3.5 text-teal-600" />
                   Routing Stops Coordinates
                 </h3>
                 <div className="space-y-2 text-[10px]">
@@ -535,10 +827,10 @@ export default function PlannerPage() {
 
               <div
                 onClick={() => router.push(`/budget/${trip.id}`)}
-                className="p-4 rounded-xl border border-indigo-500/10 bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors cursor-pointer text-left shadow-sm"
+                className="p-4 rounded-xl border border-teal-500/10 bg-teal-500/5 hover:bg-teal-500/10 transition-colors cursor-pointer text-left shadow-sm"
               >
-                <h4 className="text-xs font-bold text-indigo-600 flex items-center gap-1">
-                  <DollarSign className="w-4 h-4 text-indigo-600" /> Smart Budget Ledger
+                <h4 className="text-xs font-bold text-teal-600 flex items-center gap-1">
+                  <DollarSign className="w-4 h-4 text-teal-600" /> Smart Budget Ledger
                 </h4>
                 <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">
                   View expense allocations, budget alerts, and unlock the SVG category breakdown donuts.
@@ -574,7 +866,7 @@ export default function PlannerPage() {
                           <span className="text-xs font-bold text-gray-800 block mt-1">{Math.round(maxTemp)}°</span>
                           <span className="text-[9px] text-gray-500 block">{Math.round(minTemp)}°</span>
                           {prob > 20 && (
-                            <span className="text-[8px] text-indigo-600 block mt-0.5">🌧 {prob}%</span>
+                            <span className="text-[8px] text-teal-600 block mt-0.5">🌧 {prob}%</span>
                           )}
                         </div>
                       );
@@ -610,7 +902,7 @@ export default function PlannerPage() {
                           type="checkbox"
                           checked={item.checked}
                           readOnly
-                          className="w-3.5 h-3.5 rounded accent-indigo-600 flex-shrink-0 cursor-pointer"
+                          className="w-3.5 h-3.5 rounded accent-teal-600 flex-shrink-0 cursor-pointer"
                         />
                         <span className={`truncate ${item.checked ? "line-through text-gray-400" : "text-gray-700"}`}>
                           {item.name}
@@ -660,17 +952,84 @@ export default function PlannerPage() {
           {/* TAB 3: DEALS */}
           {activeSidebarTab === "deals" && (
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-left">
-              
-              {/* Hotel booking cards */}
+              {/* Flight Carrier Comparison Decks */}
+              <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
+                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <Navigation className="w-4 h-4 text-teal-600" />
+                  Flight Carrier Comparison
+                </h3>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { carrier: "Air India", price: 42500, time: "8h 15m", type: "Direct", color: "border-red-200 bg-red-500/5 text-red-700" },
+                    { carrier: "IndiGo", price: 38200, time: "11h 45m", type: "1 Stop", color: "border-blue-200 bg-blue-500/5 text-blue-700" }
+                  ].map((f, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border ${f.color} flex flex-col justify-between h-28 text-left`}>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider block">{f.carrier}</span>
+                        <span className="text-[9px] opacity-75 mt-0.5 block">{f.time} • {f.type}</span>
+                      </div>
+                      <div className="mt-auto">
+                        <span className="text-xs font-black block">₹{f.price.toLocaleString("en-IN")}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addExpense(`Flight: ${f.carrier}`, "Flights", f.price * trip.travelers);
+                            alert(`Added ${f.carrier} flight expense allocation of Rs ${(f.price * trip.travelers).toLocaleString()} to Budget Ledger.`);
+                          }}
+                          className="mt-1 text-[8px] font-extrabold underline cursor-pointer hover:opacity-85"
+                        >
+                          Select Carrier
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hotel Rate Comparison Decks */}
+              <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
+                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <Hotel className="w-4 h-4 text-pink-600" />
+                  Hotel Rate Comparison
+                </h3>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { name: "Park Hyatt", price: 18200, rating: "4.8 ★", type: "Luxury Stay", color: "border-emerald-200 bg-emerald-500/5 text-emerald-700" },
+                    { name: "APA Hotel Shinjuku", price: 7500, rating: "4.2 ★", type: "Saver Stay", color: "border-amber-200 bg-amber-500/5 text-amber-700" }
+                  ].map((h, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border ${h.color} flex flex-col justify-between h-28 text-left`}>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider block truncate">{h.name}</span>
+                        <span className="text-[9px] opacity-75 mt-0.5 block">{h.rating} • {h.type}</span>
+                      </div>
+                      <div className="mt-auto">
+                        <span className="text-xs font-black block">₹{h.price.toLocaleString("en-IN")}/n</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addExpense(`Hotel: ${h.name}`, "Hotels", h.price * trip.days);
+                            alert(`Added ${h.name} stay expense allocation of Rs ${(h.price * trip.days).toLocaleString()} to Budget Ledger.`);
+                          }}
+                          className="mt-1 text-[8px] font-extrabold underline cursor-pointer hover:opacity-85"
+                        >
+                          Select Hotel
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* API Backup Hotel booking cards */}
               <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
-                    <Hotel className="w-4 h-4 text-indigo-600" />
+                    <Hotel className="w-4 h-4 text-indigo-650" />
                     Boutique Hotel Deals
                   </h3>
                   <button
                     onClick={() => setDealSorting(dealSorting === "price" ? "rating" : "price")}
-                    className="flex items-center gap-0.5 text-[9px] text-gray-400 hover:text-indigo-600 font-bold"
+                    className="flex items-center gap-0.5 text-[9px] text-gray-400 hover:text-teal-600 font-bold"
                   >
                     <ArrowUpDown className="w-3 h-3" /> Sort: {dealSorting}
                   </button>
@@ -690,7 +1049,7 @@ export default function PlannerPage() {
                           return (b.overall_rating || 0) - (a.overall_rating || 0);
                         }
                       })
-                      .slice(0, 3)
+                      .slice(0, 2)
                       .map((hotel, idx) => (
                         <div key={idx} className="p-3 rounded-xl border border-gray-150 bg-gray-50 flex items-center gap-3">
                           <ImageWithFallback
@@ -706,11 +1065,11 @@ export default function PlannerPage() {
                             <h4 className="text-[11px] font-bold text-gray-800 truncate">{hotel.name}</h4>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-[9px] text-gray-500">⭐ {hotel.overall_rating || "4.5"}</span>
-                              <span className="text-[10px] font-extrabold text-pink-600">{hotel.rate_per_night?.lowest || "₹3,500"}</span>
+                              <span className="text-[10px] font-extrabold text-pink-650">{hotel.rate_per_night?.lowest || "₹3,500"}</span>
                             </div>
                             <button
                               onClick={() => handleAddHotelExpense(hotel)}
-                              className="mt-1.5 text-[8px] font-extrabold text-indigo-600 hover:text-indigo-500 flex items-center gap-0.5"
+                              className="mt-1.5 text-[8px] font-extrabold text-teal-600 hover:text-teal-500 flex items-center gap-0.5"
                             >
                               <PlusCircle className="w-2.5 h-2.5" /> Allocate Stay to budget
                             </button>
@@ -720,48 +1079,6 @@ export default function PlannerPage() {
                   </div>
                 )}
               </div>
-
-              {/* Transit Flight booking cards */}
-              <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
-                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                  <Navigation className="w-4 h-4 text-pink-500" />
-                  Flight Connections
-                </h3>
-
-                {loadingDeals ? (
-                  <div className="text-center py-4 text-xs text-gray-400 animate-pulse">Querying flights...</div>
-                ) : (
-                  <div className="space-y-3">
-                    {flightDeals.slice(0, 3).map((flight, idx) => {
-                      const details = flight.flights?.[0] || {};
-                      
-                      return (
-                        <div key={idx} className="p-3 rounded-xl border border-gray-150 bg-gray-50 flex items-center justify-between">
-                          <div>
-                            <h4 className="text-[11px] font-bold text-gray-800">{details.airline || "Saver Airline"}</h4>
-                            <p className="text-[9px] text-gray-500 mt-0.5">
-                              {details.departure_airport?.time || "10:00"} → {details.arrival_airport?.time || "12:30"}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] font-extrabold text-indigo-600 block">₹{flight.price?.toLocaleString() || "5,500"}</span>
-                            <button
-                              onClick={() => handleAddFlightExpense(flight)}
-                              className="text-[8px] font-extrabold text-pink-500 hover:text-pink-400 flex items-center gap-0.5 mt-1 justify-end ml-auto"
-                            >
-                              <PlusCircle className="w-2.5 h-2.5" /> Book Flight
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {flightDeals.length === 0 && (
-                      <div className="text-center py-2 text-[10px] text-gray-400">No flights listed. Adjust departure parameters in settings.</div>
-                    )}
-                  </div>
-                )}
-              </div>
-
             </div>
           )}
 
@@ -775,6 +1092,58 @@ export default function PlannerPage() {
               />
             </div>
           )}
+          {/* COLLAPSIBLE TRIP CHAT */}
+          <div className="mt-auto border border-gray-200 rounded-2xl bg-white shadow-sm flex flex-col overflow-hidden">
+            <div 
+              onClick={() => setIsChatExpanded(!isChatExpanded)}
+              className="px-4 py-3 bg-gray-50 border-b border-gray-150 flex justify-between items-center cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-teal-600" /> Trip Chat
+                </span>
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
+              </div>
+              {isChatExpanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+            </div>
+            
+            {isChatExpanded && (
+              <div className="flex flex-col h-60 bg-white">
+                {/* Message Log */}
+                <div className="flex-1 p-3 overflow-y-auto space-y-2 text-xs text-left scrollbar-thin">
+                  {chatMessages.map((msg, index) => (
+                    <div key={index} className={`flex flex-col ${msg.sender === "Kunth" ? "items-end" : "items-start"}`}>
+                      <span className="text-[9px] text-gray-400 font-bold mb-0.5">{msg.sender}</span>
+                      <div className={`px-3 py-1.5 rounded-2xl max-w-[85%] ${
+                        msg.sender === "Kunth" 
+                          ? "bg-teal-600 text-white rounded-tr-none" 
+                          : "bg-gray-100 text-gray-800 rounded-tl-none border border-gray-200"
+                      }`}>
+                        <p>{msg.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Chat Input */}
+                <form onSubmit={handleSendChatMessage} className="p-2 border-t border-gray-150 flex gap-1.5 bg-gray-50">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 glass-input px-3 py-1.5 rounded-xl text-[11px] focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-extrabold flex items-center justify-center transition-colors"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
 
         </div>
 
@@ -804,7 +1173,27 @@ export default function PlannerPage() {
 
               <form onSubmit={handleSaveAddStop} className="space-y-3.5">
                 <div>
-                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Place Name</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Place Name</label>
+                    <button
+                      type="button"
+                      disabled={isSuggestingStops}
+                      onClick={fetchAiStopSuggestions}
+                      className="px-2.5 py-1 rounded-lg text-[9px] font-bold bg-teal-600 hover:bg-teal-700 text-white transition-colors flex items-center gap-1 shadow-sm disabled:opacity-50"
+                    >
+                      {isSuggestingStops ? (
+                        <>
+                          <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-2.5 h-2.5 text-teal-150 animate-pulse" />
+                          <span>Suggest with AI</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={stopName}
@@ -813,6 +1202,34 @@ export default function PlannerPage() {
                     required
                     className="w-full glass-input px-3.5 py-2 rounded-xl text-xs placeholder-gray-400 focus:outline-none"
                   />
+                  
+                  {suggestError && (
+                    <p className="text-[10px] text-red-500 font-semibold mt-1">
+                      ⚠️ {suggestError}
+                    </p>
+                  )}
+
+                  {aiStopSuggestions.length > 0 && (
+                    <div className="space-y-1.5 mt-2 bg-teal-500/5 p-2 rounded-xl border border-teal-500/10 text-left">
+                      <span className="text-[9px] font-bold text-teal-750 dark:text-teal-400 uppercase tracking-wider block">AI Suggested Stops:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {aiStopSuggestions.map((sug, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setStopName(sug.name);
+                              setStopDesc(sug.description);
+                              setStopTime(sug.time || "Morning");
+                            }}
+                            className="px-2 py-1 rounded-lg border border-teal-500/20 bg-white hover:bg-teal-50/50 dark:bg-teal-950/20 text-[9px] text-teal-700 dark:text-teal-300 font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            📍 {sug.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Schedule Block</label>
@@ -836,6 +1253,49 @@ export default function PlannerPage() {
                     className="w-full glass-input px-3.5 py-2 rounded-xl text-xs placeholder-gray-400 focus:outline-none"
                   />
                 </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Memory Photo Image URL</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={stopImageUrl}
+                      onChange={(e) => setStopImageUrl(e.target.value)}
+                      placeholder="https://images.unsplash.com/photo-..."
+                      className="flex-grow glass-input px-3.5 py-2 rounded-xl text-xs placeholder-gray-400 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSearchImages(stopName)}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white transition-colors flex items-center gap-1.5 whitespace-nowrap"
+                      disabled={isSearchingImages}
+                    >
+                      {isSearchingImages ? "Searching..." : "🔍 Search Gallery"}
+                    </button>
+                  </div>
+                  {imageSearchResults.length > 0 && (
+                    <div className="mt-2.5 p-2.5 rounded-xl border border-gray-150 bg-gray-50/50 max-h-36 overflow-y-auto">
+                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                        <span>Select a photo:</span>
+                        <button type="button" onClick={() => setImageSearchResults([])} className="text-pink-650 hover:underline">Clear</button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {imageSearchResults.map((img, i) => (
+                          <div 
+                            key={i} 
+                            onClick={() => {
+                              setStopImageUrl(img.original);
+                              setImageSearchResults([]);
+                            }}
+                            className="relative aspect-video rounded-lg overflow-hidden border border-gray-200 hover:border-teal-500 cursor-pointer transition-all hover:scale-[1.02] shadow-sm"
+                            title={img.title}
+                          >
+                            <img src={img.thumbnail} alt={img.title} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 <div className="flex gap-2 justify-end pt-2 border-t border-gray-100">
                   <button
@@ -847,7 +1307,7 @@ export default function PlannerPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 text-white hover:bg-teal-500 transition-colors"
                   >
                     Add Stop
                   </button>
@@ -912,6 +1372,49 @@ export default function PlannerPage() {
                     className="w-full glass-input px-3.5 py-2 rounded-xl text-xs focus:outline-none"
                   />
                 </div>
+                <div>
+                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Memory Photo Image URL</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={stopImageUrl}
+                      onChange={(e) => setStopImageUrl(e.target.value)}
+                      placeholder="https://images.unsplash.com/photo-..."
+                      className="flex-grow glass-input px-3.5 py-2 rounded-xl text-xs placeholder-gray-400 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSearchImages(stopName)}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white transition-colors flex items-center gap-1.5 whitespace-nowrap"
+                      disabled={isSearchingImages}
+                    >
+                      {isSearchingImages ? "Searching..." : "🔍 Search Gallery"}
+                    </button>
+                  </div>
+                  {imageSearchResults.length > 0 && (
+                    <div className="mt-2.5 p-2.5 rounded-xl border border-gray-150 bg-gray-50/50 max-h-36 overflow-y-auto">
+                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                        <span>Select a photo:</span>
+                        <button type="button" onClick={() => setImageSearchResults([])} className="text-pink-650 hover:underline">Clear</button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {imageSearchResults.map((img, i) => (
+                          <div 
+                            key={i} 
+                            onClick={() => {
+                              setStopImageUrl(img.original);
+                              setImageSearchResults([]);
+                            }}
+                            className="relative aspect-video rounded-lg overflow-hidden border border-gray-200 hover:border-teal-500 cursor-pointer transition-all hover:scale-[1.02] shadow-sm"
+                            title={img.title}
+                          >
+                            <img src={img.thumbnail} alt={img.title} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 <div className="flex gap-2 justify-end pt-2 border-t border-gray-100">
                   <button
@@ -923,7 +1426,7 @@ export default function PlannerPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 text-white hover:bg-teal-500 transition-colors"
                   >
                     Save Changes
                   </button>
@@ -933,6 +1436,18 @@ export default function PlannerPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Floating AI Assistant Trigger Button */}
+      <div className="fixed bottom-6 right-6 z-[99]">
+        <button
+          type="button"
+          onClick={handleFocusAIAssistant}
+          className="flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-teal-600 to-teal-400 hover:from-teal-700 hover:to-teal-500 text-white font-extrabold text-sm shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+        >
+          <Sparkles className="w-4 h-4 text-white animate-pulse" />
+          <span>Ask TripMitra AI</span>
+        </button>
+      </div>
 
     </div>
   );

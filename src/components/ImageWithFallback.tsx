@@ -19,15 +19,17 @@ export default function ImageWithFallback({
   fallbackText,
   ...props
 }: ImageWithFallbackProps) {
+  const isSrcValid = (s: any) => s && typeof s === "string" && s.trim().length > 0;
+
   const [imgSrc, setImgSrc] = useState<any>(src);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(isSrcValid(src)));
   const [error, setError] = useState(false);
 
   // Sync state if source changes
   useEffect(() => {
     setImgSrc(src);
     setError(false);
-    setLoading(true);
+    setLoading(Boolean(isSrcValid(src)));
   }, [src]);
 
   const handleLoad = () => {
@@ -35,10 +37,12 @@ export default function ImageWithFallback({
   };
 
   const handleError = () => {
-    setError(true);
-    setLoading(false);
-    if (fallbackSrc) {
+    if (fallbackSrc && imgSrc !== fallbackSrc) {
       setImgSrc(fallbackSrc);
+      setLoading(true);
+    } else {
+      setError(true);
+      setLoading(false);
     }
   };
 

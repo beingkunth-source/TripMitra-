@@ -40,7 +40,7 @@ export default function CurrencyConverter() {
   return (
     <div className="p-5 rounded-2xl glass-panel border-gray-200 bg-white shadow-sm flex flex-col gap-4 text-left">
       <div className="flex items-center gap-2">
-        <div className="p-1.5 rounded-lg bg-pink-500/10 text-pink-600">
+        <div className="p-1.5 rounded-lg bg-coral-500/10 text-coral-600">
           <Landmark className="w-4 h-4" />
         </div>
         <h3 className="text-xs font-bold font-display uppercase tracking-wider text-gray-700">Currency Converter</h3>
@@ -100,7 +100,7 @@ export default function CurrencyConverter() {
       </div>
 
       <div className="text-[10px] text-gray-400 text-center">
-        Offline exchange rates • Updated live daily
+        Static offline rates
       </div>
     </div>
   );

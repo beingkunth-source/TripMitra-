@@ -92,7 +92,7 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={i} className="text-pink-600 font-bold">{part.slice(2, -2)}</strong>;
+        return <strong key={i} className="text-coral-500 font-bold">{part.slice(2, -2)}</strong>;
       }
       return part;
     });
@@ -103,7 +103,7 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-150 bg-gray-50/50">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600">
+          <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600">
             <Sparkles className="w-4 h-4 animate-pulse" />
           </div>
           <div className="text-left">
@@ -135,8 +135,8 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
               <div
                 className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed border ${
                   msg.role === "user"
-                    ? "bg-indigo-600 border-indigo-700 text-white rounded-tr-none"
-                    : "bg-gray-150 border-gray-200 text-gray-800 rounded-tl-none"
+                    ? "bg-teal-600 border-teal-700 text-white rounded-tr-none"
+                    : "bg-gray-100 border-gray-200 text-gray-800 rounded-tl-none dark:bg-teal-900/40 dark:border-teal-400/15 dark:text-gray-100"
                 }`}
               >
                 {formatText(msg.content)}
@@ -152,9 +152,9 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
             >
               <div className="bg-gray-100 border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-none">
                 <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             </motion.div>
@@ -169,7 +169,7 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
           <button
             key={i}
             onClick={() => handleSend(sug)}
-            className="px-2.5 py-1 rounded-full text-[10px] font-medium border border-gray-200 bg-white text-gray-600 hover:text-indigo-600 hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all duration-200"
+            className="px-2.5 py-1 rounded-full text-[10px] font-medium border border-gray-200 bg-white text-gray-600 hover:text-teal-600 hover:border-teal-500/30 hover:bg-teal-500/5 transition-all duration-200 dark:bg-teal-900/20 dark:border-teal-400/15 dark:text-gray-300 dark:hover:text-teal-300"
           >
             {sug}
           </button>
@@ -194,7 +194,7 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
         <button
           type="submit"
           disabled={!input.trim() || loading}
-          className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 disabled:hover:bg-indigo-600 transition-colors flex items-center justify-center"
+          className="p-2 rounded-xl bg-teal-600 text-white hover:bg-teal-500 disabled:opacity-40 disabled:hover:bg-teal-600 transition-colors flex items-center justify-center"
         >
           <Send className="w-3.5 h-3.5" />
         </button>
