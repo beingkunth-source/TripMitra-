@@ -6,8 +6,6 @@ import {
   ArrowLeft, Trash2, Plus, Sparkles, AlertCircle, TrendingUp, Landmark, DollarSign, Users
 } from "lucide-react";
 import { useActiveTrip, TripExpense } from "@/lib/store";
-import CurrencyConverter from "@/components/CurrencyConverter";
-import WorldClock from "@/components/WorldClock";
 
 // ─── Category colour palette ────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
@@ -723,9 +721,6 @@ export default function BudgetPage() {
               <div className="text-center py-2 text-[10px] text-gray-400 italic">No recommendations loaded offline.</div>
             )}
           </div>
-
-          <CurrencyConverter />
-          <WorldClock />
 
         </div>
 
