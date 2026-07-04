@@ -26,19 +26,28 @@ const CURRENCY_CONVERSION: Record<string, number> = {
 };
 
 // ─── Greedy Settlement algorithm ─────────────────────────────────────────────
-function getSettlements(expenses: TripExpense[]) {
-  const members = ["Kunth", "Rahul", "Priya"];
-  const balances: Record<string, number> = { Kunth: 0, Rahul: 0, Priya: 0 };
+function getSettlements(expenses: TripExpense[], members: string[]) {
+  const balances: Record<string, number> = {};
+  members.forEach((m) => {
+    balances[m] = 0;
+  });
 
   expenses.forEach((expense) => {
     const amt    = expense.amount;
-    const payer  = expense.paidBy || "Kunth";
+    const payer  = expense.paidBy || members[0] || "You";
     const split  = expense.splitWith?.length ? expense.splitWith : members;
 
-    balances[payer] = (balances[payer] || 0) + amt;
-    const share = amt / split.length;
+    if (balances[payer] === undefined) {
+      balances[payer] = 0;
+    }
+    balances[payer] += amt;
+
+    const share = amt / (split.length || 1);
     split.forEach((m) => {
-      balances[m] = (balances[m] || 0) - share;
+      if (balances[m] === undefined) {
+        balances[m] = 0;
+      }
+      balances[m] -= share;
     });
   });
 
@@ -82,14 +91,38 @@ export default function BudgetPage() {
     setBudgetLimit,
   } = useActiveTrip(tripId);
 
+  // Resolve traveler names helper
+  const getTravellerNames = (t: typeof trip) => {
+    if (!t) return [];
+    if (t.travellerNames && t.travellerNames.length > 0) {
+      return t.travellerNames;
+    }
+    const names = ["You"];
+    for (let i = 2; i <= t.travelers; i++) {
+      names.push(`Traveler ${i}`);
+    }
+    return names;
+  };
+
+  const members = getTravellerNames(trip);
+
   // Form States
   const [desc, setDesc] = useState("");
   const [cat, setCat] = useState<TripExpense["category"]>("Food");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("INR");
-  const [paidBy, setPaidBy] = useState("Kunth");
-  const [splitWith, setSplitWith] = useState<string[]>(["Kunth", "Rahul", "Priya"]);
+  const [paidBy, setPaidBy] = useState("You");
+  const [splitWith, setSplitWith] = useState<string[]>([]);
   const [inputLimit, setInputLimit] = useState("");
+
+  // Sync paidBy and splitWith once trip is loaded
+  useEffect(() => {
+    if (trip) {
+      const names = getTravellerNames(trip);
+      setPaidBy(names[0] || "You");
+      setSplitWith(names);
+    }
+  }, [trip?.id, trip?.travelers, trip?.travellerNames]);
 
   // AI Insights State
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
@@ -203,7 +236,7 @@ export default function BudgetPage() {
   const hasAnyDailySpend = dailySpends.some(s => s > 0);
 
   // Settlement computations
-  const { balances, settlements } = getSettlements(trip.expenses);
+  const { balances, settlements } = getSettlements(trip.expenses, members);
   const hasSharedExpenses = trip.expenses.some(e => e.paidBy && e.splitWith && e.splitWith.length > 0);
 
   const handleAddExpenseSubmit = (e: React.FormEvent) => {
@@ -409,11 +442,12 @@ export default function BudgetPage() {
                       <td className="px-5 py-3.5 font-medium text-gray-800 dark:text-teal-100">
                         <div>{expense.description}</div>
                         <div className="text-[9.5px] text-gray-400 dark:text-teal-400/70 font-semibold mt-0.5">
-                          Paid by <span className="text-slate-650 dark:text-teal-300">{expense.paidBy || "Kunth"}</span>
-                          {" • "}Split:{" "}
-                          <span className="text-slate-650 dark:text-teal-300">
-                            {expense.splitWith?.length ? expense.splitWith.join(", ") : "All"}
-                          </span>
+                          Paid by <span className="text-slate-650 dark:text-teal-300">{expense.paidBy || "You"}</span>, split <span className="text-slate-650 dark:text-teal-300">{expense.splitWith?.length || trip.travelers} ways</span>
+                          {expense.perPersonSplit !== undefined && (
+                            <span className="text-[9px] text-teal-650 dark:text-teal-400 font-bold ml-2 bg-teal-500/5 dark:bg-teal-950/20 px-1.5 py-0.5 rounded border border-teal-500/10 dark:border-teal-400/15">
+                              Each: {expense.currency && expense.currency !== "INR" ? `${CURRENCY_SYMBOLS[expense.currency] || ""}${Math.round((expense.originalAmount || expense.amount) / (expense.splitWith?.length || 1)).toLocaleString()}` : `₹${Math.round(expense.perPersonSplit).toLocaleString()}`}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
@@ -659,17 +693,19 @@ export default function BudgetPage() {
                   onChange={(e) => setPaidBy(e.target.value)}
                   className="w-full glass-input px-3.5 py-2 rounded-xl text-xs cursor-pointer focus:outline-none dark:bg-teal-950/60 dark:border-teal-500/20"
                 >
-                  <option value="Kunth" className="bg-white dark:bg-teal-950 text-gray-900 dark:text-teal-100">Kunth</option>
-                  <option value="Rahul" className="bg-white dark:bg-teal-950 text-gray-900 dark:text-teal-100">Rahul</option>
-                  <option value="Priya" className="bg-white dark:bg-teal-950 text-gray-900 dark:text-teal-100">Priya</option>
+                  {members.map((name) => (
+                    <option key={name} value={name} className="bg-white dark:bg-teal-950 text-gray-900 dark:text-teal-100">
+                      {name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               {/* Split With checkboxes */}
               <div>
                 <label className="text-[10px] text-gray-400 dark:text-teal-400/70 font-bold uppercase tracking-wider block mb-1.5">Split With</label>
-                <div className="flex gap-4 px-1">
-                  {["Kunth", "Rahul", "Priya"].map((name) => (
+                <div className="flex flex-wrap gap-x-4 gap-y-2 px-1">
+                  {members.map((name) => (
                     <label key={name} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
                       <input
                         type="checkbox"

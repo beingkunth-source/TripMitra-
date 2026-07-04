@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { MapPin, Calendar, Users, Globe, BookOpen, AlertCircle, ShieldAlert } from "lucide-react";
-import { Trip } from "@/lib/store";
+import { Trip, updateTripRecord } from "@/lib/store";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import ExportButtons from "./ExportButtons";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface TripHeaderProps {
   trip: Trip;
@@ -31,6 +32,25 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
 
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loadingCollabs, setLoadingCollabs] = useState(false);
+
+  // Manage custom co-traveler names
+  const [showTravellersModal, setShowTravellersModal] = useState(false);
+  const [namesInput, setNamesInput] = useState<string[]>([]);
+
+  const getTravellerNames = (t: Trip) => {
+    if (t.travellerNames && t.travellerNames.length > 0) {
+      return t.travellerNames;
+    }
+    const names = ["You"];
+    for (let i = 2; i <= t.travelers; i++) {
+      names.push(`Traveler ${i}`);
+    }
+    return names;
+  };
+
+  useEffect(() => {
+    setNamesInput(getTravellerNames(trip));
+  }, [trip.travellerNames, trip.travelers]);
 
   // Fetch collaborators from Supabase
   useEffect(() => {
@@ -150,9 +170,16 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
             <span className="flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-indigo-500" /> Start: {trip.startDate || "TBD"}
             </span>
-            <span className="flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-teal-600" /> {trip.travelers} Traveler(s)
-            </span>
+            <button
+              type="button"
+              onClick={() => setShowTravellersModal(true)}
+              className="flex items-center gap-1.5 hover:bg-gray-150/80 dark:hover:bg-teal-900/40 px-2 py-1 rounded-lg transition-colors cursor-pointer text-left focus:outline-none"
+              title="Edit Traveler Names"
+            >
+              <Users className="w-4 h-4 text-teal-600" />
+              <span>{trip.travelers} Traveler(s)</span>
+              <span className="text-[9px] text-indigo-600 dark:text-teal-400 font-bold hover:underline ml-1">(Edit Names)</span>
+            </button>
           </div>
         </div>
 
@@ -238,6 +265,76 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
 
         </div>
       </div>
+      {/* --- MANAGE TRAVELERS MODAL --- */}
+      <AnimatePresence>
+        {showTravellersModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTravellersModal(false)}
+              className="absolute inset-0 bg-gray-950/20 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm rounded-2xl glass-panel border-gray-200 bg-white p-6 shadow-xl flex flex-col gap-4 text-left"
+            >
+              <div>
+                <h3 className="text-base font-bold font-display text-gray-900">Edit Traveler Names</h3>
+                <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Input names of all travelers. These names will be used for logging splits on the budget page.</p>
+              </div>
+
+              <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
+                {Array.from({ length: trip.travelers }).map((_, i) => (
+                  <div key={i}>
+                    <label className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Traveler {i + 1} Name</label>
+                    <input
+                      type="text"
+                      value={namesInput[i] || ""}
+                      onChange={(e) => {
+                        const next = [...namesInput];
+                        next[i] = e.target.value;
+                        setNamesInput(next);
+                      }}
+                      placeholder={i === 0 ? "You" : `Traveler ${i + 1}`}
+                      className="w-full glass-input px-3.5 py-2 rounded-xl text-xs placeholder-gray-400 focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2.5 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTravellersModal(false)}
+                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const finalNames = Array.from({ length: trip.travelers }).map((_, i) => {
+                      return namesInput[i]?.trim() || (i === 0 ? "You" : `Traveler ${i + 1}`);
+                    });
+                    await updateTripRecord({
+                      ...trip,
+                      travellerNames: finalNames
+                    });
+                    setShowTravellersModal(false);
+                  }}
+                  className="flex-grow py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white transition-colors"
+                >
+                  Save Names
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

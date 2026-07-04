@@ -29,6 +29,7 @@ export interface TripExpense {
   originalAmount?: number;
   paidBy?: string;
   splitWith?: string[];
+  perPersonSplit?: number;
 }
 
 export interface PackingItem {
@@ -49,6 +50,7 @@ export interface Trip {
   itinerary: TripDay[];
   expenses: TripExpense[];
   packingList: PackingItem[];
+  travellerNames?: string[];
   createdAt: string;
 }
 
@@ -128,7 +130,8 @@ export async function updateTripRecord(updatedTrip: Trip) {
             travelers: updatedTrip.travelers,
             budget_limit: updatedTrip.budgetLimit,
             expenses: updatedTrip.expenses,
-            packing_list: updatedTrip.packingList
+            packing_list: updatedTrip.packingList,
+            traveller_names: updatedTrip.travellerNames || []
           })
           .eq("id", updatedTrip.id);
         
@@ -263,6 +266,7 @@ export async function fetchFullTripFromSupabase(tripId: string): Promise<Trip | 
       itinerary,
       expenses: tripData.expenses || [],
       packingList: tripData.packing_list || [],
+      travellerNames: tripData.traveller_names || [],
       createdAt: tripData.created_at
     };
   } catch (err) {
@@ -289,7 +293,8 @@ export async function createSupabaseTrip(
         travelers: tripData.travelers,
         budget_limit: tripData.budgetLimit,
         expenses: [],
-        packing_list: []
+        packing_list: [],
+        traveller_names: tripData.travellerNames || []
       })
       .select()
       .single();
@@ -679,10 +684,28 @@ export function useActiveTrip(tripId: string | null) {
     date?: string,
     currency = "INR",
     originalAmount?: number,
-    paidBy = "Kunth",
-    splitWith = ["Kunth", "Rahul", "Priya"]
+    paidBy?: string,
+    splitWith?: string[]
   ) => {
     if (!trip) return;
+
+    // Resolve traveler names helper
+    const getTravellerNames = (t: Trip) => {
+      if (t.travellerNames && t.travellerNames.length > 0) {
+        return t.travellerNames;
+      }
+      const names = ["You"];
+      for (let i = 2; i <= t.travelers; i++) {
+        names.push(`Traveler ${i}`);
+      }
+      return names;
+    };
+
+    const members = getTravellerNames(trip);
+    const finalPaidBy = paidBy || members[0] || "You";
+    const finalSplitWith = splitWith && splitWith.length > 0 ? splitWith : members;
+    const share = amount / (finalSplitWith.length || 1);
+
     const newExpense: TripExpense = {
       id: Math.random().toString(36).substring(2, 9),
       description,
@@ -691,8 +714,9 @@ export function useActiveTrip(tripId: string | null) {
       date: date || new Date().toISOString().split("T")[0],
       currency,
       originalAmount: originalAmount !== undefined ? originalAmount : amount,
-      paidBy,
-      splitWith
+      paidBy: finalPaidBy,
+      splitWith: finalSplitWith,
+      perPersonSplit: share
     };
     const updatedExpenses = [...trip.expenses, newExpense];
     const updatedTrip = { ...trip, expenses: updatedExpenses };

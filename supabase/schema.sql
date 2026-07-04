@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.trips (
   budget_limit NUMERIC DEFAULT 50000,
   expenses JSONB DEFAULT '[]'::jsonb,
   packing_list JSONB DEFAULT '[]'::jsonb,
+  traveller_names JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
