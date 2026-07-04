@@ -120,20 +120,38 @@ export async function updateTripRecord(updatedTrip: Trip) {
     if (user) {
       try {
         // 1. Update primary details
-        await supabase
+        const updatePayload: any = {
+          destination: updatedTrip.destination,
+          origin_city: updatedTrip.originCity,
+          start_date: updatedTrip.startDate,
+          days: updatedTrip.days,
+          travelers: updatedTrip.travelers,
+          budget_limit: updatedTrip.budgetLimit,
+          expenses: updatedTrip.expenses,
+          packing_list: updatedTrip.packingList,
+          traveller_names: updatedTrip.travellerNames || []
+        };
+
+        const firstTry = await supabase
           .from("trips")
-          .update({
-            destination: updatedTrip.destination,
-            origin_city: updatedTrip.originCity,
-            start_date: updatedTrip.startDate,
-            days: updatedTrip.days,
-            travelers: updatedTrip.travelers,
-            budget_limit: updatedTrip.budgetLimit,
-            expenses: updatedTrip.expenses,
-            packing_list: updatedTrip.packingList,
-            traveller_names: updatedTrip.travellerNames || []
-          })
+          .update(updatePayload)
           .eq("id", updatedTrip.id);
+
+        let updateErr = firstTry.error;
+
+        if (updateErr && (updateErr.code === "42703" || updateErr.message?.includes("traveller_names"))) {
+          console.warn("Supabase trips table is missing traveller_names column. Retrying update without it.");
+          delete updatePayload.traveller_names;
+          const retryTry = await supabase
+            .from("trips")
+            .update(updatePayload)
+            .eq("id", updatedTrip.id);
+          updateErr = retryTry.error;
+        }
+
+        if (updateErr) {
+          console.error("updateTripRecord primary update error:", updateErr);
+        }
         
         // 2. Sync itinerary days and activities
         for (const day of updatedTrip.itinerary) {
@@ -282,7 +300,10 @@ export async function createSupabaseTrip(
 ): Promise<Trip | null> {
   if (!isSupabaseConfigured) return null;
   try {
-    const { data: tripRecord, error: tripErr } = await supabase
+    let tripRecord: any = null;
+    let tripErr: any = null;
+
+    const firstTry = await supabase
       .from("trips")
       .insert({
         user_id: userId,
@@ -298,6 +319,31 @@ export async function createSupabaseTrip(
       })
       .select()
       .single();
+
+    tripRecord = firstTry.data;
+    tripErr = firstTry.error;
+
+    if (tripErr && (tripErr.code === "42703" || tripErr.message?.includes("traveller_names"))) {
+      console.warn("Supabase trips table is missing traveller_names column. Retrying insert without it.");
+      const retryTry = await supabase
+        .from("trips")
+        .insert({
+          user_id: userId,
+          destination: tripData.destination,
+          origin_city: tripData.originCity,
+          start_date: tripData.startDate,
+          days: tripData.days,
+          travelers: tripData.travelers,
+          budget_limit: tripData.budgetLimit,
+          expenses: [],
+          packing_list: []
+        })
+        .select()
+        .single();
+      
+      tripRecord = retryTry.data;
+      tripErr = retryTry.error;
+    }
 
     if (tripErr || !tripRecord) throw tripErr || new Error("Failed to insert trip");
 

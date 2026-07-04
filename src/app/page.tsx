@@ -157,14 +157,12 @@ export default function HomePage() {
     saveSearchQuery(destination);
     setHistory(getSearchHistory());
 
-    // Geocoding validation check before triggering generation
+    // Geocoding check (log warning if unresolved but do not block search)
     try {
       const geoUrl = `/api/geocode?place=${encodeURIComponent(destination.trim())}`;
       const geoRes = await fetch(geoUrl);
       if (!geoRes.ok) {
-        alert(`Could not resolve coordinates for "${destination}". Please check the spelling or try a more specific destination name.`);
-        setGenerating(false);
-        return;
+        console.warn(`Could not resolve coordinates for "${destination}". Continuing to generate itinerary.`);
       }
     } catch (err) {
       console.warn("Geocoding validation check failed, continuing anyway:", err);
