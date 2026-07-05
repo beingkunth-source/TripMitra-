@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { callSerpApi, toAirportCode } from "@/lib/api-helper";
+import { callSerpApi } from "@/lib/serpapi";
+import { toAirportCode } from "@/lib/geo";
 
 export async function POST(request: Request) {
   try {

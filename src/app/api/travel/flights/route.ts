@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { callSerpApi, toAirportCode } from "@/lib/api-helper";
+import { callSerpApi } from "@/lib/serpapi";
+import { toAirportCode } from "@/lib/geo";
 import { getCached, setCached } from "@/lib/redis";
 
 export async function GET(request: Request) {
@@ -18,13 +19,11 @@ export async function GET(request: Request) {
   try {
     const cachedFlights = await getCached<any>(cacheKey);
     if (cachedFlights) {
-      console.log(`[Redis] Cache HIT for flights key: ${cacheKey}`);
       return NextResponse.json(cachedFlights);
     }
 
     const apiKey = process.env.SERP_API_KEY;
     if (!apiKey) {
-      console.log("No SERP_API_KEY found. Returning mock flight data.");
       const mockData = {
         best_flights: [
           {

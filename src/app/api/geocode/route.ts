@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { resolveCoords, callSerpApi, haversineKm, fetchWithTimeout } from "@/lib/api-helper";
+import { resolveCoords, haversineKm, fetchWithTimeout } from "@/lib/geo";
+import { callSerpApi } from "@/lib/serpapi";
 
 /** Open-Meteo geocoding with an explicit free-text query string. */
 async function openMeteoSearch(query: string): Promise<{ lat: number; lng: number } | null> {
@@ -41,13 +42,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Missing "place" query parameter' }, { status: 400 });
   }
 
-  console.log(`[geocode] Resolving: "${place}"` + (location ? ` in "${location}"` : ""));
+
 
   try {
     // 1a. Local CITY_COORDS dictionary lookup (exact place name)
     const coordsLocal = await resolveCoords(place);
     if (coordsLocal) {
-      console.log(`[geocode] ✓ Local dict hit for "${place}": ${coordsLocal.lat}, ${coordsLocal.lng}`);
+
       return NextResponse.json(coordsLocal);
     }
 
@@ -60,18 +61,18 @@ export async function GET(request: Request) {
         if (destCoords) {
           const dist = haversineKm(destCoords.lat, destCoords.lng, coordsPlaceOnly.lat, coordsPlaceOnly.lng);
           if (dist <= 300) {
-            console.log(`[geocode] ✓ Open-Meteo (place-only) for "${place}": ${coordsPlaceOnly.lat}, ${coordsPlaceOnly.lng} (${Math.round(dist)} km from ${location})`);
+
             return NextResponse.json(coordsPlaceOnly);
           } else {
             console.warn(`[geocode] Open-Meteo place-only rejected (${Math.round(dist)} km away). Trying contextual query.`);
           }
         } else {
           // no known dest coords — trust it anyway
-          console.log(`[geocode] ✓ Open-Meteo (place-only, no dest ref) for "${place}": ${coordsPlaceOnly.lat}, ${coordsPlaceOnly.lng}`);
+
           return NextResponse.json(coordsPlaceOnly);
         }
       } else {
-        console.log(`[geocode] ✓ Open-Meteo (place-only) for "${place}": ${coordsPlaceOnly.lat}, ${coordsPlaceOnly.lng}`);
+
         return NextResponse.json(coordsPlaceOnly);
       }
     }
@@ -85,13 +86,13 @@ export async function GET(request: Request) {
         if (destCoords) {
           const dist = haversineKm(destCoords.lat, destCoords.lng, coordsCtx.lat, coordsCtx.lng);
           if (dist <= 300) {
-            console.log(`[geocode] ✓ Open-Meteo (contextual) for "${contextQuery}": ${coordsCtx.lat}, ${coordsCtx.lng}`);
+
             return NextResponse.json(coordsCtx);
           } else {
             console.warn(`[geocode] Open-Meteo contextual also out of range (${Math.round(dist)} km). Continuing.`);
           }
         } else {
-          console.log(`[geocode] ✓ Open-Meteo (contextual, no dest ref) for "${contextQuery}": ${coordsCtx.lat}, ${coordsCtx.lng}`);
+
           return NextResponse.json(coordsCtx);
         }
       }
@@ -109,7 +110,7 @@ export async function GET(request: Request) {
       const placeData = data?.place_results || data?.local_results?.[0];
       if (placeData?.gps_coordinates?.latitude && placeData?.gps_coordinates?.longitude) {
         const coords = { lat: placeData.gps_coordinates.latitude, lng: placeData.gps_coordinates.longitude };
-        console.log(`[geocode] ✓ SerpAPI for "${place}": ${coords.lat}, ${coords.lng}`);
+
 
         // Distance validation: reject points > 300km from known destination center
         if (location) {

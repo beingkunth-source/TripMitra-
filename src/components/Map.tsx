@@ -134,18 +134,7 @@ export default function Map({ activities, destination, centerCoords, isGeocoding
       polylineRef.current = null;
     }
 
-    // ── Fix c/d: log each activity's resolved coords ─────────────────────────
-    if (activities.length > 0) {
-      console.groupCollapsed(`[Map] Rendering ${activities.length} activities for "${destination}"`);
-      activities.forEach((act, i) => {
-        if (typeof act.lat === "number" && typeof act.lng === "number") {
-          console.log(`  [${i + 1}] "${act.name}" → ${act.lat.toFixed(5)}, ${act.lng.toFixed(5)}`);
-        } else {
-          console.warn(`  [${i + 1}] "${act.name}" → ⚠ no coordinates (lat/lng undefined)`);
-        }
-      });
-      console.groupEnd();
-    }
+
 
     // Filter activities with valid coordinates
     const validActivities = activities.filter(

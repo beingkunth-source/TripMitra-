@@ -187,45 +187,6 @@ export function toAirportCode(input: string): string {
   return CITY_AIRPORT_MAP[lower] || trimmed;
 }
 
-export function parseGeminiResponse(text: string): any {
-  if (!text) throw new Error("Empty Gemini response");
-  let cleaned = text.trim();
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/g, "");
-  }
-  return JSON.parse(cleaned);
-}
-
-export async function callGemini(prompt: string): Promise<any | null> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    console.warn("No GEMINI_API_KEY configured.");
-    return null;
-  }
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: "application/json" },
-      }),
-    });
-    const data = await res.json();
-    if (data.error) {
-      console.error("Gemini API error:", data.error.message);
-      return null;
-    }
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
-    return parseGeminiResponse(text);
-  } catch (err: any) {
-    console.error("Gemini fetch error:", err.message);
-    return null;
-  }
-}
-
 export async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -256,26 +217,6 @@ export async function resolveCoords(input: string): Promise<{ lat: number; lng: 
     console.error("Geocoding error for:", input, geoErr);
   }
   return null;
-}
-
-export async function callSerpApi(params: Record<string, any>): Promise<any> {
-  const apiKey = process.env.SERP_API_KEY;
-  if (!apiKey) {
-    console.warn("No SERP_API_KEY configured.");
-    return null;
-  }
-  try {
-    const searchParams = new URLSearchParams({ ...params, api_key: apiKey });
-    const url = `https://serpapi.com/search.json?${searchParams.toString()}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`SerpAPI error status ${res.status}`);
-    }
-    return await res.json();
-  } catch (err: any) {
-    console.error("SerpAPI fetch error:", err.message);
-    return null;
-  }
 }
 
 export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {

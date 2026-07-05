@@ -2,18 +2,35 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Star, Heart, MapPin, Calendar, Clock } from "lucide-react";
+import { 
+  ArrowLeft, Sparkles, Star, Heart, Clock, Edit3, Camera, Upload, Trash2, X 
+} from "lucide-react";
 import { useActiveTrip, TripActivity } from "@/lib/store";
 import TripHeader from "@/components/TripHeader";
 import ImageWithFallback from "@/components/ImageWithFallback";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function TripJournalPage() {
   const params = useParams();
   const router = useRouter();
   const tripId = params.id as string;
 
-  const { trip } = useActiveTrip(tripId);
+  const { trip, editActivity } = useActiveTrip(tripId);
   const [isInternational, setIsInternational] = useState<boolean | null>(null);
+
+  // Editing state
+  const [editingStop, setEditingStop] = useState<{
+    id: string;
+    dayNumber: number;
+    name: string;
+    description: string;
+    imageUrl: string;
+    rating: number;
+    notes: string;
+  } | null>(null);
+
+  const [ratingHover, setRatingHover] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Run border check
   useEffect(() => {
@@ -55,6 +72,58 @@ export default function TripJournalPage() {
     }))
   );
 
+  const handleStartEdit = (stop: any) => {
+    setEditingStop({
+      id: stop.id,
+      dayNumber: stop.dayNumber,
+      name: stop.name,
+      description: stop.description || "",
+      imageUrl: stop.imageUrl || "",
+      rating: stop.rating || 0,
+      notes: stop.notes || ""
+    });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate size (limit to 2MB to keep base64 reasonable for localStorage/DB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Please upload an image smaller than 2MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string" && editingStop) {
+        setEditingStop({
+          ...editingStop,
+          imageUrl: reader.result
+        });
+      }
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      alert("Failed to read image file.");
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveMemory = async () => {
+    if (!editingStop) return;
+
+    await editActivity(editingStop.dayNumber, editingStop.id, {
+      imageUrl: editingStop.imageUrl,
+      rating: editingStop.rating,
+      notes: editingStop.notes
+    });
+
+    setEditingStop(null);
+  };
+
   return (
     <div className="relative w-full max-w-7xl mx-auto px-4 pt-20 pb-6 md:pt-32 md:pb-10 text-gray-800 bg-[#FAF8F5]">
       
@@ -89,8 +158,18 @@ export default function TripJournalPage() {
           {allStops.map((stop, index) => (
             <div 
               key={stop.id || index}
-              className="bg-white border border-gray-200/60 rounded-card-ds shadow-card-ds p-5 flex flex-col gap-4 text-left transition-all hover:shadow-elevated-ds hover:-translate-y-1 duration-300"
+              className="group bg-white border border-gray-200/60 rounded-card-ds shadow-card-ds p-5 flex flex-col gap-4 text-left transition-all hover:shadow-elevated-ds hover:-translate-y-1 duration-300 relative"
             >
+              {/* Edit overlay button */}
+              <button
+                onClick={() => handleStartEdit(stop)}
+                className="absolute top-4 right-4 z-10 p-2 bg-white/90 hover:bg-teal-650 hover:text-white rounded-xl border border-gray-200/80 shadow-md text-gray-600 transition-all flex items-center gap-1 text-[10px] font-bold opacity-80 group-hover:opacity-100"
+                title="Edit Memory Log"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Log Memory</span>
+              </button>
+
               {/* Photo Area */}
               <div className="relative w-full h-44 rounded-xl overflow-hidden border border-gray-150 shadow-inner bg-gray-50">
                 <ImageWithFallback
@@ -104,7 +183,7 @@ export default function TripJournalPage() {
                   Day {stop.dayNumber}
                 </span>
                 {stop.time && (
-                  <span className="absolute top-3 right-3 text-[10px] font-extrabold text-teal-850 bg-teal-50/95 border border-teal-500/20 px-2.5 py-0.75 rounded-full shadow-md flex items-center gap-1">
+                  <span className="absolute top-3 right-16 text-[10px] font-extrabold text-teal-850 bg-teal-50/95 border border-teal-500/20 px-2.5 py-0.75 rounded-full shadow-md flex items-center gap-1">
                     <Clock className="w-3 h-3 text-teal-650" />
                     {stop.time}
                   </span>
@@ -124,17 +203,27 @@ export default function TripJournalPage() {
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star 
                       key={star}
-                      className={`w-4 h-4 ${star <= (stop.rating || 0) ? "text-amber-500 fill-amber-500 animate-pulse" : "text-gray-200"}`}
+                      className={`w-4 h-4 ${star <= (stop.rating || 0) ? "text-amber-500 fill-amber-500" : "text-gray-200"}`}
                     />
                   ))}
+                  {(stop.rating || 0) === 0 && (
+                    <span className="text-[9px] text-gray-400 font-semibold italic ml-1.5 self-center">Not rated yet</span>
+                  )}
                 </div>
               </div>
 
               {/* Travel Memo Notes */}
               <div className="flex flex-col gap-1 border-t border-gray-100 pt-3 flex-grow">
                 <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">Travel Memo</span>
-                <div className="p-3 rounded-xl bg-amber-50/20 border border-amber-100/40 text-xs italic text-gray-700 leading-relaxed min-h-[60px]">
-                  {stop.notes || "No notes written down yet for this stop. Write one in Journal/Scrapbook Mode on the main timeline!"}
+                <div className="p-3 rounded-xl bg-amber-50/10 border border-amber-100/20 text-xs italic text-gray-700 leading-relaxed min-h-[60px]">
+                  {stop.notes || (
+                    <button 
+                      onClick={() => handleStartEdit(stop)}
+                      className="text-teal-600 hover:text-teal-700 hover:underline font-bold text-left block w-full h-full cursor-pointer focus:outline-none"
+                    >
+                      + Capture thoughts/memoir note...
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -142,6 +231,150 @@ export default function TripJournalPage() {
         </div>
       )}
 
+      {/* --- MEMORY EDITOR MODAL / SHEET --- */}
+      <AnimatePresence>
+        {editingStop && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingStop(null)}
+              className="absolute inset-0 bg-gray-950/20 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="relative w-full max-w-md rounded-2xl glass-panel border-gray-200 bg-white p-6 shadow-xl flex flex-col gap-4 text-left max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div>
+                  <h3 className="text-base font-bold font-display text-gray-900">Log Memory stop</h3>
+                  <p className="text-[10px] text-gray-500 font-semibold mt-0.5">{editingStop.name}</p>
+                </div>
+                <button
+                  onClick={() => setEditingStop(null)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Photo Upload Area */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Stop Photo</span>
+                
+                {editingStop.imageUrl ? (
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200">
+                    <img 
+                      src={editingStop.imageUrl} 
+                      alt="Stop Photo Preview" 
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditingStop({ ...editingStop, imageUrl: "" })}
+                      className="absolute top-2.5 right-2.5 p-1.5 bg-red-650 hover:bg-red-700 text-white rounded-lg shadow-md transition-colors"
+                      title="Remove Photo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-full h-40 rounded-xl border-2 border-dashed border-gray-200 hover:border-teal-500/50 bg-gray-50/50 hover:bg-teal-50/10 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all">
+                    <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-650">
+                      {isUploading ? (
+                        <div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Camera className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-gray-700 block">Attach visit photo</span>
+                      <span className="text-[9px] text-gray-400 mt-0.5 block">Drag & drop or browse (Max 2MB)</span>
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleImageUpload}
+                      disabled={isUploading}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Interactive Star Rating */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Rate this Memory</span>
+                <div className="flex gap-1.5 items-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditingStop({ ...editingStop, rating: star })}
+                      onMouseEnter={() => setRatingHover(star)}
+                      onMouseLeave={() => setRatingHover(0)}
+                      className="p-0.5 rounded focus:outline-none transition-transform hover:scale-110"
+                    >
+                      <Star 
+                        className={`w-6 h-6 transition-colors ${
+                          star <= (ratingHover || editingStop.rating) 
+                            ? "text-amber-500 fill-amber-500" 
+                            : "text-gray-200"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="text-xs font-bold text-gray-500 ml-2">
+                    {
+                      {
+                        0: "Not rated",
+                        1: "Disappointing 😞",
+                        2: "Okayish 😐",
+                        3: "Good stop 🙂",
+                        4: "Amazing! 😍",
+                        5: "Unforgettable! 🌟"
+                      }[ratingHover || editingStop.rating]
+                    }
+                  </span>
+                </div>
+              </div>
+
+              {/* Memoir Text Note */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Travel Memoir Notes</label>
+                <textarea
+                  value={editingStop.notes}
+                  onChange={(e) => setEditingStop({ ...editingStop, notes: e.target.value })}
+                  placeholder="Record your thoughts, highlights, funny memories, or notes from visiting this stop..."
+                  rows={4}
+                  className="w-full glass-input px-3 py-2 rounded-xl text-xs placeholder-gray-450 focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2.5 mt-2 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingStop(null)}
+                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveMemory}
+                  className="flex-grow py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white transition-colors"
+                >
+                  Save Memoir
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

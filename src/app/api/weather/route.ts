@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveCoords, fetchWithTimeout } from "@/lib/api-helper";
+import { resolveCoords, fetchWithTimeout } from "@/lib/geo";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

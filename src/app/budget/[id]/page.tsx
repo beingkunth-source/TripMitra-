@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
-  ArrowLeft, Trash2, Plus, Sparkles, AlertCircle, TrendingUp, Landmark, DollarSign, Users
+  ArrowLeft, Trash2, Plus, Sparkles, AlertCircle, TrendingUp, Landmark, DollarSign, Users, X, UserPlus
 } from "lucide-react";
-import { useActiveTrip, TripExpense } from "@/lib/store";
+import { useActiveTrip, TripExpense, updateTripRecord } from "@/lib/store";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Category colour palette ────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
@@ -43,7 +44,7 @@ function getSettlements(expenses: TripExpense[], members: string[]) {
     balances[payer] += amt;
 
     const share = amt / (split.length || 1);
-    split.forEach((m) => {
+    split.forEach((m: string) => {
       if (balances[m] === undefined) {
         balances[m] = 0;
       }
@@ -115,6 +116,32 @@ export default function BudgetPage() {
   const [splitWith, setSplitWith] = useState<string[]>([]);
   const [inputLimit, setInputLimit] = useState("");
 
+  // Add Member State
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
+
+  // Floating Budget Badge & Filter States
+  const [showBadgeDetail, setShowBadgeDetail] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"date" | "amount">("date");
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trip || !newMemberName.trim()) return;
+
+    const currentNames = getTravellerNames(trip);
+    const updatedNames = [...currentNames, newMemberName.trim()];
+
+    await updateTripRecord({
+      ...trip,
+      travelers: updatedNames.length,
+      travellerNames: updatedNames
+    });
+
+    setNewMemberName("");
+    setShowAddMemberModal(false);
+  };
+
   // Sync paidBy and splitWith once trip is loaded
   useEffect(() => {
     if (trip) {
@@ -142,7 +169,7 @@ export default function BudgetPage() {
     const fetchBudgetInsights = async () => {
       setLoadingAi(true);
       try {
-        const res = await fetch("/api/budget-intelligence", {
+        const res = await fetch("/api/ai/budget-intelligence", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -238,6 +265,13 @@ export default function BudgetPage() {
   // Settlement computations
   const { balances, settlements } = getSettlements(trip.expenses, members);
   const hasSharedExpenses = trip.expenses.some(e => e.paidBy && e.splitWith && e.splitWith.length > 0);
+
+  const filteredExpenses = trip.expenses
+    .filter((e) => !categoryFilter || e.category === categoryFilter)
+    .sort((a, b) => {
+      if (sortBy === "amount") return b.amount - a.amount;
+      return (b.date || "").localeCompare(a.date || "");
+    });
 
   const handleAddExpenseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -422,6 +456,49 @@ export default function BudgetPage() {
             <div className="px-5 py-4 border-b border-gray-150 dark:border-teal-500/20 flex items-center justify-between bg-gray-50/50 dark:bg-teal-950/40">
               <h3 className="text-sm font-bold font-display uppercase tracking-wider text-gray-700 dark:text-teal-200">Expense Ledger</h3>
             </div>
+
+            {/* Filter and Sort Bar */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-150 dark:border-teal-500/20 bg-gray-50/30 dark:bg-teal-950/20 flex-wrap gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setCategoryFilter(null)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-colors cursor-pointer ${
+                    !categoryFilter 
+                      ? "bg-indigo-600 text-white border-indigo-600" 
+                      : "bg-white dark:bg-teal-950 text-gray-500 dark:text-teal-400 border-gray-200 dark:border-teal-500/20 hover:bg-gray-50 dark:hover:bg-teal-900/30"
+                  }`}
+                >
+                  All ({trip.expenses.length})
+                </button>
+                {Object.keys(categorySpends).map((cat) => {
+                  const count = trip.expenses.filter((e) => e.category === cat).length;
+                  if (count === 0) return null;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setCategoryFilter(cat)}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-colors cursor-pointer ${
+                        categoryFilter === cat 
+                          ? "text-white border-transparent" 
+                          : "bg-white dark:bg-teal-950 text-gray-500 dark:text-teal-400 border-gray-200 dark:border-teal-500/20 hover:bg-gray-50 dark:hover:bg-teal-900/30"
+                      }`}
+                      style={categoryFilter === cat ? { backgroundColor: CATEGORY_COLORS[cat] } : {}}
+                    >
+                      {cat} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as "date" | "amount")}
+                className="text-[10px] font-bold text-gray-650 dark:text-teal-300 border border-gray-200 dark:border-teal-500/20 rounded-lg px-2.5 py-1 bg-white dark:bg-teal-950 cursor-pointer focus:outline-none"
+              >
+                <option value="date">Sort: Recent</option>
+                <option value="amount">Sort: Amount</option>
+              </select>
+            </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
@@ -434,7 +511,7 @@ export default function BudgetPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {trip.expenses.map((expense) => (
+                  {filteredExpenses.map((expense) => (
                     <tr
                       key={expense.id}
                       className="border-b border-gray-150 dark:border-teal-500/20 hover:bg-gray-50/50 dark:hover:bg-teal-900/20 transition-colors"
@@ -473,7 +550,7 @@ export default function BudgetPage() {
                       <td className="px-5 py-3.5 text-right">
                         <button
                           onClick={() => deleteExpense(expense.id)}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-teal-900/50 rounded text-gray-400 hover:text-coral-500 transition-colors"
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-teal-900/50 rounded text-gray-450 hover:text-coral-500 transition-colors"
                           title="Delete Expense"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -481,10 +558,10 @@ export default function BudgetPage() {
                       </td>
                     </tr>
                   ))}
-                  {trip.expenses.length === 0 && (
+                  {filteredExpenses.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="text-center py-8 text-gray-400 dark:text-teal-500 italic">
-                        No expenses logged. Add expenses below or allocate deals to budget.
+                      <td colSpan={4} className="text-center py-8 text-gray-450 dark:text-teal-550 italic">
+                        No expenses match the filter criteria.
                       </td>
                     </tr>
                   )}
@@ -553,9 +630,44 @@ export default function BudgetPage() {
 
           {/* SETTLE UP LEDGER */}
           <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left shadow-sm">
-            <h3 className="text-xs font-bold font-display uppercase tracking-wider text-gray-700 dark:text-teal-200 mb-4">
-              Settle Up Ledger
-            </h3>
+            <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-teal-500/10 pb-3">
+              <h3 className="text-xs font-bold font-display uppercase tracking-wider text-gray-700 dark:text-teal-200">
+                Settle Up Ledger
+              </h3>
+              
+              {/* Member avatar/pills row */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-gray-400 dark:text-teal-400/70 mr-1">{members.length} Members:</span>
+                <div className="flex -space-x-1.5 overflow-hidden">
+                  {members.map((name, idx) => {
+                    const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
+                    const colorClass = [
+                      "bg-teal-500/10 border-teal-500/30 text-teal-700 dark:text-teal-300",
+                      "bg-indigo-500/10 border-indigo-500/30 text-indigo-700 dark:text-indigo-300",
+                      "bg-pink-500/10 border-pink-500/30 text-pink-700 dark:text-pink-300",
+                      "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300",
+                    ][idx % 4];
+                    return (
+                      <div
+                        key={idx}
+                        className={`w-6 h-6 rounded-full border flex items-center justify-center text-[9px] font-black shadow-xs ${colorClass}`}
+                        title={name}
+                      >
+                        {initials}
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddMemberModal(true)}
+                  className="w-6 h-6 rounded-full border border-dashed border-gray-300 dark:border-teal-500/30 hover:border-teal-500 bg-white dark:bg-teal-950/40 text-gray-450 hover:text-teal-650 flex items-center justify-center transition-colors focus:outline-none ml-1 cursor-pointer"
+                  title="Add Ledger Member"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
 
             {!hasSharedExpenses ? (
               <div className="flex flex-col items-center justify-center py-6 px-4 rounded-xl border border-dashed border-gray-200 dark:border-teal-550/20 bg-gray-50/50 dark:bg-[#0d1f1c]/30 text-center">
@@ -739,7 +851,7 @@ export default function BudgetPage() {
               <div className="text-center py-4 text-xs text-gray-400 animate-pulse">Running budget analytics...</div>
             ) : aiSuggestions ? (
               <div className="space-y-3">
-                <div className="p-3 rounded-xl bg-teal-500/5 dark:bg-teal-950/20 border border-teal-500/10 dark:border-teal-400/15 text-[10px] text-gray-600 dark:text-teal-300 leading-relaxed">
+                <div className="p-3 rounded-xl bg-teal-500/5 dark:bg-teal-950/20 border border-teal-500/10 dark:border-teal-400/15 text-[10px] text-gray-650 dark:text-teal-300 leading-relaxed">
                   💰 <strong>Recommendation:</strong> {aiSuggestions.upsell_description}
                 </div>
 
@@ -760,6 +872,51 @@ export default function BudgetPage() {
 
         </div>
 
+      </div>
+
+      {/* Floating budget badge, top-right corner */}
+      <div className="fixed top-20 right-6 z-50">
+        <motion.button
+          onClick={() => setShowBadgeDetail(!showBadgeDetail)}
+          whileTap={{ scale: 0.95 }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg border backdrop-blur-md font-bold text-xs cursor-pointer ${
+            isOverBudget
+              ? "bg-pink-600/95 border-pink-700 text-white"
+              : "bg-teal-650/95 border-teal-700 text-white"
+          }`}
+        >
+          <Landmark className="w-3.5 h-3.5" />
+          <span>₹{remaining.toLocaleString("en-IN")}</span>
+        </motion.button>
+
+        <AnimatePresence>
+          {showBadgeDetail && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              className="absolute top-12 right-0 w-64 p-4 rounded-2xl glass-panel border-gray-200 dark:border-teal-500/25 bg-white dark:bg-teal-950/95 shadow-xl text-left"
+            >
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-gray-500 dark:text-teal-400 font-semibold">Budget limit</span>
+                <span className="font-bold text-gray-850 dark:text-white">₹{trip.budgetLimit.toLocaleString("en-IN")}</span>
+              </div>
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-gray-500 dark:text-teal-400 font-semibold">Spent</span>
+                <span className="font-bold text-gray-850 dark:text-white">₹{totalSpent.toLocaleString("en-IN")}</span>
+              </div>
+              <div className="h-px bg-gray-150 dark:bg-teal-500/10 my-2" />
+              <div className="flex justify-between text-xs">
+                <span className={`font-semibold ${isOverBudget ? "text-pink-600" : "text-emerald-600 dark:text-emerald-400"}`}>
+                  {isOverBudget ? "Over budget" : "Remaining"}
+                </span>
+                <span className={`font-extrabold ${isOverBudget ? "text-pink-600" : "text-emerald-600 dark:text-emerald-400"}`}>
+                  ₹{Math.abs(remaining).toLocaleString("en-IN")}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
     </div>

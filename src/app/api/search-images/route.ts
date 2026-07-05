@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callSerpApi } from "@/lib/api-helper";
+import { callSerpApi } from "@/lib/serpapi";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

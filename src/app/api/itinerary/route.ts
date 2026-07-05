@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { callGemini, callSerpApi } from "@/lib/api-helper";
+import { callGemini } from "@/lib/gemini";
+import { callSerpApi } from "@/lib/serpapi";
 
 export async function POST(request: Request) {
   try {

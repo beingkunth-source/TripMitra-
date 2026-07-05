@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callGemini } from "@/lib/api-helper";
+import { callGemini } from "@/lib/gemini";
 import { checkRateLimit, getCached, setCached } from "@/lib/redis";
 
 export async function POST(request: Request) {
@@ -33,7 +33,6 @@ export async function POST(request: Request) {
     const cacheKey = `tripmitra:itinerary:${destination.toLowerCase().trim()}:${originCity?.toLowerCase()?.trim() || "mumbai"}:${generatedDays}:${travelers || 1}:${budgetLimit || 50000}`;
     const cachedItinerary = await getCached<any>(cacheKey);
     if (cachedItinerary) {
-      console.log(`[Redis] Cache HIT for key: ${cacheKey}`);
       return NextResponse.json({
         ...cachedItinerary,
         isCached: true,

@@ -43,7 +43,7 @@ export default function HomePage() {
   const [history, setHistory] = useState<string[]>([]);
   const [savedTrips, setSavedTrips] = useState<Trip[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [activeInterestTab, setActiveInterestTab] = useState("Beach");
+
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -311,32 +311,19 @@ export default function HomePage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Carousel & Inspiration data
-  const carouselDestinations = [
-    { city: "Tokyo", country: "Japan", image: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=600&q=80", tag: "Tech & Temple" },
-    { city: "Paris", country: "France", image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80", tag: "Art & Romance" },
-    { city: "Rome", country: "Italy", image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=600&q=80", tag: "Ancient Heritage" },
-    { city: "Bali", country: "Indonesia", image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80", tag: "Tropical Escape" },
-    { city: "Dubrovnik", country: "Croatia", image: "https://images.unsplash.com/photo-1505881502353-a1986add3762?auto=format&fit=crop&w=600&q=80", tag: "Coastal Fort" },
+  // Merged destination grid data (Featured Gateways + Popular Getaways)
+  const allDestinations = [
+    { city: "Kyoto",     emoji: "🌸", desc: "Wooden temples & zen gardens",       country: "Japan",     image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80", span: "md:col-span-2 md:row-span-2" },
+    { city: "Tokyo",     emoji: "🗼", desc: "Neon skyline & ancient shrines",      country: "Japan",     image: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
+    { city: "Bali",      emoji: "🌴", desc: "Rice terraces & surf paradise",       country: "Indonesia", image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
+    { city: "Paris",     emoji: "🗼", desc: "Art, romance & iconic boulevards",    country: "France",    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
+    { city: "Goa",       emoji: "🏖️", desc: "Sundecks & coastal beach life",       country: "India",     image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
+    { city: "Rome",      emoji: "🏛️", desc: "Ancient heritage & cobbled piazzas", country: "Italy",     image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
+    { city: "Manali",    emoji: "🏔️", desc: "Snowy peak treks & valley trails",   country: "India",     image: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
+    { city: "Dubrovnik", emoji: "🏰", desc: "Adriatic walls & coastal forts",      country: "Croatia",   image: "https://images.unsplash.com/photo-1505881502353-a1986add3762?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
+    { city: "Varanasi",  emoji: "🪔", desc: "Spiritual river ghat ceremonies",    country: "India",     image: "https://images.unsplash.com/photo-1561361513-2d000a50f0db?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
   ];
 
-  const categoriesData: Record<string, { city: string; desc: string; image: string; tag: string }[]> = {
-    Beach: [
-      { city: "Goa", desc: "Sunny coastal beaches and Portuguese architecture.", image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80", tag: "Relaxing" },
-      { city: "Maldives", desc: "Overwater bungalows and turquoise marine lagoons.", image: "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=400&q=80", tag: "Luxury" },
-      { city: "Phuket", desc: "Lively night markets and pristine sandy beaches.", image: "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=400&q=80", tag: "Adventure" },
-    ],
-    Adventure: [
-      { city: "Manali", desc: "Snowy peak treks, paragliding, and valley trails.", image: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=400&q=80", tag: "Trekking" },
-      { city: "Leh Ladakh", desc: "Breathtaking high passes and high altitude lakes.", image: "https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?auto=format&fit=crop&w=400&q=80", tag: "Scenic" },
-      { city: "Spiti Valley", desc: "Rugged desert mountains and Buddhist monasteries.", image: "https://images.unsplash.com/photo-1589712791456-f2fe6a40c6c0?auto=format&fit=crop&w=400&q=80", tag: "Remote" },
-    ],
-    Culture: [
-      { city: "Jaipur", desc: "The Royal Pink City palaces and vibrant forts.", image: "https://images.unsplash.com/photo-1477584305359-0d760f35558d?auto=format&fit=crop&w=400&q=80", tag: "Royal" },
-      { city: "Kyoto", desc: "Wooden temples, gardens, and traditional tea houses.", image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=400&q=80", tag: "Heritage" },
-      { city: "Varanasi", desc: "Vibrant spiritual ghat ceremonies and old alleys.", image: "https://images.unsplash.com/photo-1561361513-2d000a50f0db?auto=format&fit=crop&w=400&q=80", tag: "Spiritual" },
-    ],
-  };
 
   return (
     <div className="relative w-full max-w-[1400px] mx-auto px-4 md:px-8 pt-16 md:pt-24 pb-20 text-[#221F1C]">
@@ -445,14 +432,23 @@ export default function HomePage() {
               </div>
 
               <div className="border-t border-gray-300/60 pt-2.5">
-                <div className="flex justify-between items-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="text-[10px] font-bold text-teal-800 hover:text-teal-950 transition-colors uppercase tracking-wider"
-                  >
-                    {showAdvanced ? "▼ Simple Search" : "▲ Customize Dates & Budget"}
-                  </button>
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="text-[10px] font-bold text-teal-800 hover:text-teal-950 transition-colors uppercase tracking-wider"
+                    >
+                      {showAdvanced ? "▼ Simple Search" : "▲ Customize Dates & Budget"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/compare")}
+                      className="text-[10px] font-bold text-indigo-700 hover:text-indigo-950 transition-colors uppercase tracking-wider flex items-center gap-1"
+                    >
+                      ⚖️ Compare Destinations
+                    </button>
+                  </div>
                   <p className="hidden sm:block text-[9px] text-[#64748b] font-bold uppercase tracking-wider">
                     Examples: &ldquo;Kyoto under ₹90k&rdquo;
                   </p>
@@ -756,73 +752,31 @@ export default function HomePage() {
         })}
       </section>
 
-      {/* 2. FEATURED DESTINATIONS CAROUSEL (NEW) */}
+      {/* 2. DESTINATIONS GRID */}
       <section className="mb-16">
         <div className="mb-6 text-left">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#666059] block mb-1">Curation Favorites</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#666059] block mb-1">Top Picks Worldwide</span>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C] flex items-center gap-2">
             <Compass className="w-5 h-5 text-teal-600" />
-            Featured Gateways
+            Popular Destinations
           </h2>
+          <p className="text-xs text-[#666059] mt-0.5">Tap any destination to instantly pre-fill the trip planner</p>
         </div>
-        <div className="flex overflow-x-auto gap-4 pb-4 scroll-smooth no-scrollbar snap-x snap-mandatory">
-          {carouselDestinations.map((dest, idx) => (
-            <div
-              key={idx}
-              onClick={() => handleInterestSelect(dest.city)}
-              className="flex-shrink-0 w-60 snap-start group rounded-2xl border border-gray-200/50 bg-white/80 p-3 shadow-soft hover:shadow-md transition-all duration-300 cursor-pointer text-left"
-            >
-              <div className="h-36 w-full relative overflow-hidden rounded-xl mb-3">
-                <ImageWithFallback
-                  src={dest.image}
-                  alt={dest.city}
-                  fill
-                  sizes="240px"
-                  fallbackText={dest.city}
-                  className="object-cover transition-transform duration-500 group-hover:scale-103"
-                />
-                <span className="absolute top-2 left-2 text-[9px] font-bold text-teal-700 border border-teal-500/20 bg-white/90 px-2 py-0.5 rounded-full shadow-sm">
-                  {dest.tag}
-                </span>
-              </div>
-              <h3 className="text-sm font-bold font-display text-gray-800">{dest.city}</h3>
-              <p className="text-[10px] text-gray-400 font-medium">{dest.country}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
-      {/* POPULAR GETAWAYS GRID WITH REAL IMAGES */}
-      <section className="mb-16">
-        <div className="mb-6 text-left">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-teal-850 block mb-1">Trending Explores</span>
-          <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C] flex items-center gap-2">
-            <Compass className="w-5 h-5 text-teal-600" />
-            Popular Getaways
-          </h2>
-          <p className="text-xs text-[#666059] mt-0.5">Directly select from our users' favorite hotspots to start your plan</p>
-        </div>
-        
-        {/* Bento Grid Masonry-like Section */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-5 auto-rows-[165px]">
-          {[
-            { city: "Kyoto", emoji: "🌸", desc: "Wooden temples & zen gardens", country: "Japan", image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80", span: "md:col-span-2 md:row-span-2 h-full" },
-            { city: "Goa", emoji: "🏖️", desc: "Sundecks & coastal beach life", country: "India", image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1 h-full" },
-            { city: "Manali", emoji: "🏔️", desc: "Snowy peak treks & trails", country: "India", image: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1 h-full" },
-            { city: "Varanasi", emoji: "🪔", desc: "Spiritual river ghat ceremonies", country: "India", image: "https://images.unsplash.com/photo-1561361513-2d000a50f0db?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1 h-full" },
-          ].map((dest, idx) => (
+          {allDestinations.map((dest, idx) => (
             <motion.div
               key={idx}
               whileHover={{ y: -6, scale: 1.01 }}
               onClick={() => handleInterestSelect(dest.city)}
-              className={`group overflow-hidden rounded-card-ds border border-slate-200 bg-white shadow-card-ds hover:shadow-elevated-ds transition-all duration-300 cursor-pointer flex flex-col text-left ${dest.span}`}
+              className={`group overflow-hidden rounded-card-ds border border-slate-200 bg-white shadow-card-ds hover:shadow-elevated-ds transition-all duration-300 cursor-pointer flex flex-col text-left h-full ${dest.span}`}
             >
               <div className="relative w-full flex-grow overflow-hidden min-h-[110px]">
                 <ImageWithFallback
                   src={dest.image}
                   alt={dest.city}
                   fill
-                  sizes="400px"
+                  sizes="(max-width: 768px) 100vw, 400px"
                   fallbackText={dest.city}
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
@@ -844,8 +798,8 @@ export default function HomePage() {
               </div>
             </motion.div>
           ))}
-          
-          {/* AI Bento CTA Grid Item */}
+
+          {/* AI prompt CTA tile */}
           <motion.div
             whileHover={{ y: -6, scale: 1.01 }}
             onClick={() => { setDestination(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
@@ -876,7 +830,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
             {savedTrips.map((trip) => {
               const attractionsCount = (trip.itinerary && trip.itinerary.length > 0) 
-                ? trip.itinerary.reduce((sum, d) => sum + (d.activities?.length || 0), 0) 
+                ? trip.itinerary.reduce((sum: number, d: any) => sum + (d.activities?.length || 0), 0) 
                 : 3;
               
               return (
@@ -891,6 +845,17 @@ export default function HomePage() {
                         {trip.days} Days
                       </span>
                       <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/compare?a=${trip.id}`);
+                          }}
+                          className="text-[9px] font-extrabold text-indigo-700 bg-indigo-500/10 hover:bg-indigo-500/25 border border-indigo-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider transition-colors cursor-pointer"
+                          title="Compare destinations"
+                        >
+                          Compare
+                        </button>
                         <span className="text-[9px] font-extrabold text-teal-750 bg-teal-500/10 border border-teal-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider">
                           Status: Planning
                         </span>
@@ -984,76 +949,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. TRENDING / POPULAR DESTINATIONS CATEGORIES */}
-      <section className="mb-16">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 text-left">
-          <div>
-            <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C] flex items-center gap-2">
-              <Compass className="w-5 h-5 text-teal-600" />
-              Travel Inspiration
-            </h2>
-            <p className="text-xs text-[#666059] mt-0.5">Explore curated destinations grouped by journey styles</p>
-          </div>
-
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#FAF8F5] border border-gray-200/50">
-            {Object.keys(categoriesData).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setActiveInterestTab(cat)}
-                className={`px-3 py-1 rounded-lg text-[10px] font-bold tracking-wide transition-all ${
-                  activeInterestTab === cat 
-                    ? "bg-white border border-gray-200/40 text-teal-700 shadow-sm" 
-                    : "text-gray-400 hover:text-gray-800"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {categoriesData[activeInterestTab].map((item, idx) => (
-            <motion.div
-              key={idx}
-              whileHover={{ y: -8, scale: 1.01 }}
-              onClick={() => handleInterestSelect(item.city)}
-              className="group rounded-card-ds border border-slate-200 bg-white/90 shadow-card-ds hover:shadow-elevated-ds hover:border-teal-500/30 transition-all duration-300 cursor-pointer flex flex-col justify-between text-left"
-            >
-              <div className="h-44 w-full relative overflow-hidden rounded-t-card-ds">
-                <ImageWithFallback
-                  src={item.image}
-                  alt={item.city}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 350px"
-                  fallbackText={item.city}
-                  className="object-cover transition-transform duration-500 group-hover:scale-[1.05]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent to-transparent" />
-                <span className="absolute top-3 right-3 text-[10px] font-bold text-teal-700 border border-teal-500/20 bg-white/90 px-2.5 py-0.5 rounded-full">
-                  {item.tag}
-                </span>
-              </div>
-              <div className="p-5">
-                <h3 className="text-base font-bold font-display text-gray-850">{item.city}</h3>
-                <p className="text-xs text-[#666059] mt-1.5 leading-relaxed font-medium">{item.desc}</p>
-                
-                {/* Visual Slide-up Overlay Plan Button */}
-                <div className="mt-5 overflow-hidden relative h-9 border-t border-gray-100 pt-2">
-                  <div className="w-full h-full flex items-center justify-between text-xs font-extrabold text-teal-750 transition-transform duration-300 group-hover:-translate-y-full">
-                    <span className="flex items-center gap-1.5">Curate journey <ArrowRight className="w-3.5 h-3.5" /></span>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center text-xs font-extrabold text-white bg-gradient-to-r from-teal-600 to-emerald-600 rounded-lg transition-transform duration-300 translate-y-full group-hover:translate-y-0 shadow-sm">
-                    <span className="flex items-center gap-1.5">Plan This Trip <Sparkles className="w-3.5 h-3.5 text-white animate-pulse" /></span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
 
     </div>
   );

@@ -45,7 +45,7 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
     setLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

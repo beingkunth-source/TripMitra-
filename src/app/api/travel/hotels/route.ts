@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callSerpApi } from "@/lib/api-helper";
+import { callSerpApi } from "@/lib/serpapi";
 import { getCached, setCached } from "@/lib/redis";
 
 export async function GET(request: Request) {
@@ -17,13 +17,11 @@ export async function GET(request: Request) {
   try {
     const cachedHotels = await getCached<any>(cacheKey);
     if (cachedHotels) {
-      console.log(`[Redis] Cache HIT for hotels key: ${cacheKey}`);
       return NextResponse.json(cachedHotels);
     }
 
     const apiKey = process.env.SERP_API_KEY;
     if (!apiKey) {
-      console.log("No SERP_API_KEY found. Returning mock hotel data.");
       const mockData = {
         properties: [
           {

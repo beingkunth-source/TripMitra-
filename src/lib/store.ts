@@ -1,58 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 
-export interface TripActivity {
-  id: string;
-  name: string;
-  description: string;
-  time?: string; // e.g. "Morning", "Afternoon", "Evening"
-  lat?: number;
-  lng?: number;
-  imageUrl?: string;
-  rating?: number;
-  notes?: string;
-}
-
-export interface TripDay {
-  dayNumber: number;
-  theme: string;
-  activities: TripActivity[];
-}
-
-export interface TripExpense {
-  id: string;
-  description: string;
-  category: "Flights" | "Hotels" | "Food" | "Activities" | "Shopping & Misc";
-  amount: number;
-  date?: string;
-  currency?: string;
-  originalAmount?: number;
-  paidBy?: string;
-  splitWith?: string[];
-  perPersonSplit?: number;
-}
-
-export interface PackingItem {
-  id: string;
-  category: string;
-  name: string;
-  checked: boolean;
-}
-
-export interface Trip {
-  id: string;
-  destination: string;
-  originCity: string;
-  startDate: string;
-  days: number;
-  travelers: number;
-  budgetLimit: number;
-  itinerary: TripDay[];
-  expenses: TripExpense[];
-  packingList: PackingItem[];
-  travellerNames?: string[];
-  createdAt: string;
-}
+import { Trip, TripActivity, TripDay, TripExpense, PackingItem } from "@/types/trip";
+export type { Trip, TripActivity, TripDay, TripExpense, PackingItem };
 
 // Global subscribers list to notify state updates across hooks
 const listeners = new Set<(changedTripId?: string) => void>();
@@ -269,7 +219,10 @@ export async function fetchFullTripFromSupabase(tripId: string): Promise<Trip | 
           description: a.description || "",
           time: a.time || "Morning",
           lat: a.lat ? parseFloat(a.lat) : undefined,
-          lng: a.lng ? parseFloat(a.lng) : undefined
+          lng: a.lng ? parseFloat(a.lng) : undefined,
+          imageUrl: a.image_url || a.imageUrl || "",
+          rating: a.rating ? parseInt(a.rating) : 0,
+          notes: a.notes || ""
         }))
     }));
 
@@ -545,17 +498,37 @@ export function useActiveTrip(tripId: string | null) {
             
             // Re-insert sorted new activities
             if (activities.length > 0) {
-              const insertData = activities.map((act, index) => ({
+              const insertDataWithMemories = activities.map((act, index) => ({
                 day_id: resolvedDayRec.id,
                 name: act.name,
                 description: act.description || "",
                 time: act.time || "Morning",
                 lat: act.lat,
                 lng: act.lng,
-                position: index
+                position: index,
+                image_url: act.imageUrl || null,
+                rating: act.rating || null,
+                notes: act.notes || null
               }));
-              const { error: insertActErr } = await supabase.from("activities").insert(insertData);
-              if (insertActErr) {
+              
+              const { error: insertActErr } = await supabase.from("activities").insert(insertDataWithMemories);
+              
+              if (insertActErr && (insertActErr.code === "42703" || insertActErr.message?.includes("image_url") || insertActErr.message?.includes("rating") || insertActErr.message?.includes("notes"))) {
+                console.warn("Supabase activities table is missing photo journal columns. Retrying insert without them.");
+                const insertDataStandard = activities.map((act, index) => ({
+                  day_id: resolvedDayRec.id,
+                  name: act.name,
+                  description: act.description || "",
+                  time: act.time || "Morning",
+                  lat: act.lat,
+                  lng: act.lng,
+                  position: index
+                }));
+                const { error: retryErr } = await supabase.from("activities").insert(insertDataStandard);
+                if (retryErr) {
+                  console.error("Supabase error re-inserting activities in updateActivities:", retryErr.message);
+                }
+              } else if (insertActErr) {
                 console.error("Supabase error inserting activities in updateActivities:", insertActErr.message);
               }
             }

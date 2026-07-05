@@ -2,13 +2,9 @@
 
 import React from "react";
 import { Printer, Calendar, Share2, Check } from "lucide-react";
-import { Trip } from "@/lib/store";
+import { Trip, TripDay, TripActivity } from "@/types/trip";
 
-interface ExportButtonsProps {
-  trip: Trip;
-}
-
-export default function ExportButtons({ trip }: ExportButtonsProps) {
+export default function ExportButtons({ trip }: { trip: Trip }) {
   const [copied, setCopied] = React.useState(false);
 
   // 1. PDF Printer Exporter
@@ -33,14 +29,14 @@ export default function ExportButtons({ trip }: ExportButtonsProps) {
         "METHOD:PUBLISH",
       ];
 
-      trip.itinerary.forEach((day) => {
+      trip.itinerary.forEach((day: TripDay) => {
         const dayOffset = day.dayNumber - 1;
         const eventDate = new Date(baseDate);
         eventDate.setDate(baseDate.getDate() + dayOffset);
 
         const dateStr = eventDate.toISOString().slice(0, 10).replace(/-/g, "");
 
-        day.activities.forEach((act, idx) => {
+        day.activities.forEach((act: TripActivity, idx: number) => {
           // Approximate start/end times based on time-of-day category
           let startHour = 10;
           let endHour = 12;

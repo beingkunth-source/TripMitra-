@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { 
   Calendar, Users, MapPin, Compass, Landmark, Briefcase, Globe
 } from "lucide-react";
-import { useActiveTrip } from "@/lib/store";
+import { useActiveTrip, updateTripRecord } from "@/lib/store";
 import ImageWithFallback from "@/components/ImageWithFallback";
 
 // Dynamic Import for Leaflet Map to avoid SSR compilation errors
@@ -37,6 +37,42 @@ export default function SharePage() {
   // Active UI States
   const [activeDay, setActiveDay] = useState(1);
   const [activeTab, setActiveTab] = useState<"itinerary" | "budget" | "packing">("itinerary");
+
+  // Invite states
+  const searchParams = useSearchParams();
+  const isInvite = searchParams?.get("invite") === "1";
+  const [collabName, setCollabName] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+
+  const handleJoinTrip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trip || !collabName.trim()) return;
+    setIsJoining(true);
+
+    const getTravellerNames = (t: typeof trip) => {
+      if (!t) return ["You"];
+      if (t.travellerNames && t.travellerNames.length > 0) {
+        return [...t.travellerNames];
+      }
+      const names = ["You"];
+      for (let i = 2; i <= t.travelers; i++) {
+        names.push(`Traveler ${i}`);
+      }
+      return names;
+    };
+
+    const currentNames = getTravellerNames(trip);
+    const updatedNames = [...currentNames, collabName.trim()];
+
+    await updateTripRecord({
+      ...trip,
+      travelers: updatedNames.length,
+      travellerNames: updatedNames
+    });
+
+    setIsJoining(false);
+    router.push(`/planner/${trip.id}`);
+  };
 
   if (isLoading) {
     return (
@@ -114,6 +150,36 @@ export default function SharePage() {
   return (
     <div className="relative w-full max-w-7xl mx-auto px-4 pt-20 pb-16 text-gray-800 bg-[#FAF8F5] min-h-screen">
       
+      {isInvite && (
+        <div className="mb-6 p-6 rounded-3xl border border-teal-200/60 bg-teal-500/5 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 text-left animate-fade-in">
+          <div>
+            <span className="inline-flex items-center gap-1 text-[10px] text-teal-700 font-extrabold bg-teal-500/10 px-2.5 py-0.5 rounded-full mb-1 uppercase tracking-wider">
+              🎉 Invitation Received
+            </span>
+            <h2 className="text-base font-extrabold text-gray-900">You've been invited to collaborate on this trip!</h2>
+            <p className="text-xs text-gray-500 mt-0.5 font-medium">Enter your name below to join the shared workspace as a co-traveler.</p>
+          </div>
+          
+          <form onSubmit={handleJoinTrip} className="flex gap-2 w-full md:max-w-xs">
+            <input
+              type="text"
+              required
+              value={collabName}
+              onChange={(e) => setCollabName(e.target.value)}
+              placeholder="Your name..."
+              className="flex-grow glass-input px-3.5 py-2.5 rounded-xl text-xs placeholder-gray-400 focus:outline-none bg-white border border-gray-200"
+            />
+            <button
+              type="submit"
+              disabled={isJoining}
+              className="px-5 py-2.5 bg-teal-650 hover:bg-teal-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+            >
+              {isJoining ? "Joining..." : "Join Trip"}
+            </button>
+          </form>
+        </div>
+      )}
+
       {/* HEADER BANNER */}
       <div className="p-6 md:p-8 rounded-3xl border border-gray-200/50 bg-white shadow-sm mb-8 text-left relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 bg-teal-500/10 border-b border-l border-teal-500/20 text-teal-700 text-[10px] font-black tracking-widest uppercase rounded-bl-2xl flex items-center gap-1.5">

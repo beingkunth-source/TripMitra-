@@ -37,10 +37,6 @@
 | **Weather** | Open-Meteo (free, no API key) |
 | **Database & Auth** | Supabase (PostgreSQL + RLS) |
 | **Caching** | Upstash Redis |
-| **Fonts** | Geist, Outfit, Plus Jakarta Sans |
-
----
-
 ## 📁 Project Structure
 
 ```
@@ -48,20 +44,23 @@ TripMitra/
 ├── 📂 src/
 │   ├── 📂 app/
 │   │   ├── 📂 api/
-│   │   │   ├── 🤖 generate-itinerary/   # AI itinerary generation
-│   │   │   ├── 💬 chat/                 # AI travel assistant
+│   │   │   ├── 📂 ai/                   # AI-specific endpoints
+│   │   │   │   ├── 💬 chat/             # AI travel assistant
+│   │   │   │   ├── 💰 budget-intelligence/  # AI budget analysis
+│   │   │   │   ├── 💰 budget-suggestions/   # AI budget allocation tips
+│   │   │   │   ├── 🌤️ weather-advice/   # AI weather/clothing tips
+│   │   │   │   ├── ✅ packing-suggestions/  # AI packing list generator
+│   │   │   │   └── 📍 suggest-stop/     # AI activity suggestions
+│   │   │   ├── 📂 travel/               # Travel comparison services
+│   │   │   │   ├── ✈️ flights/          # Google Flights search
+│   │   │   │   ├── 🏨 hotels/           # Google Hotels search
+│   │   │   │   └── 🚗 transit-options/  # Multi-mode transit search
+│   │   │   ├── 🤖 generate-itinerary/   # Optimized AI itinerary generation
+│   │   │   ├── 📝 itinerary/            # Fallback + TripAdvisor places
 │   │   │   ├── 🗺️ geocode/              # Place → coordinates
 │   │   │   ├── 🌤️ weather/              # Forecast & historical data
-│   │   │   ├── 🌤️ weather-advice/       # AI weather/clothing tips
-│   │   │   ├── ✅ packing-suggestions/   # AI packing list generator
-│   │   │   ├── ✈️ flights/              # Google Flights search
-│   │   │   ├── 🏨 hotels/               # Google Hotels search
-│   │   │   ├── 💰 budget-intelligence/   # AI budget analysis
-│   │   │   ├── 💰 budget-suggestions/    # AI budget allocation tips
-│   │   │   ├── 📝 itinerary/            # Legacy + TripAdvisor places
 │   │   │   ├── 🖼️ search-images/        # Destination images
-│   │   │   ├� 🔍 check-border/          # Cross-border detection
-│   │   │   └── 🚗 transit-options/      # Multi-mode transit search
+│   │   │   └── 🔍 check-border/          # Cross-border detection
 │   │   ├── 📂 budget/[id]/              # Budget ledger page
 │   │   ├── 📂 planner/[id]/             # Main trip planner (3-column)
 │   │   ├── 📄 page.tsx                  # Homepage
@@ -76,8 +75,12 @@ TripMitra/
 │   │   ├── 🖼️ ImageWithFallback.tsx     # Image with skeleton fallback
 │   │   ├── 🗺️ Map.tsx                   # Leaflet interactive map
 │   │   └── 🕐 WorldClock.tsx            # Multi-timezone clock
+│   ├── 📂 types/
+│   │   └── 📄 trip.ts                   # Unified types definitions
 │   └── 📂 lib/
-│       ├── 📦 api-helper.ts             # Gemini, SerpAPI, geocoding, utils
+│       ├── 📍 geo.ts                    # Coords mapping, resolveCoords
+│       ├── 🤖 gemini.ts                 # callGemini AI caller
+│       ├── ✈️ serpapi.ts                # callSerpApi search caller
 │       ├── 🗄️ redis.ts                  # Upstash Redis client
 │       ├── 🗃️ store.ts                  # State management + localStorage/Supabase
 │       └── 🔌 supabaseClient.ts         # Supabase client init

@@ -14,6 +14,7 @@ import ExportButtons from "@/components/ExportButtons";
 import AIChatAssistant from "@/components/AIChatAssistant";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import TripHeader from "@/components/TripHeader";
+import { requestAndSchedule } from "@/lib/notificationScheduler";
 
 // Dynamic Import for Leaflet Map to avoid SSR 'window is not defined' compilation errors
 const Map = dynamic(() => import("@/components/Map"), { 
@@ -77,6 +78,13 @@ export default function PlannerPage() {
   const [isSuggestingStops, setIsSuggestingStops] = useState(false);
   const [aiStopSuggestions, setAiStopSuggestions] = useState<{ name: string; description: string; time: string }[]>([]);
   const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  // Auto-schedule push notifications when a trip loads
+  useEffect(() => {
+    if (trip) {
+      requestAndSchedule(trip).catch(err => console.warn("Failed to schedule reminders:", err));
+    }
+  }, [trip?.id, trip?.startDate]);
 
   useEffect(() => {
     if (!trip?.destination) return;
@@ -175,45 +183,59 @@ export default function PlannerPage() {
   useEffect(() => {
     if (!trip?.destination) return;
 
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const fetchWeatherData = async () => {
       setLoadingWeather(true);
       try {
-        const res = await fetch(`/api/weather?destination=${encodeURIComponent(trip.destination)}&date=${trip.startDate}`);
+        const res = await fetch(
+          `/api/weather?destination=${encodeURIComponent(trip.destination)}&date=${trip.startDate}`,
+          { signal }
+        );
         if (!res.ok) throw new Error();
         const data = await res.json();
         setWeatherForecast(data);
 
         // Fetch AI Weather advice matching forecast
         if (data.forecast) {
-          const adviceRes = await fetch("/api/weather-advice", {
+          const adviceRes = await fetch("/api/ai/weather-advice", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               destination: trip.destination,
               dates: trip.startDate,
               weather_summary: data.forecast.daily
-            })
+            }),
+            signal
           });
           if (adviceRes.ok) {
             const adviceData = await adviceRes.json();
             setWeatherAdvice(adviceData.weather_advice);
           }
         }
-      } catch (err) {
-        console.error("Failed to load weather:", err);
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.error("Failed to load weather:", err);
+        }
       } finally {
-        setLoadingWeather(false);
+        if (!signal.aborted) {
+          setLoadingWeather(false);
+        }
       }
     };
 
     const fetchDealsData = async () => {
       setLoadingDeals(true);
+      setFlightDeals([]);
+      setHotelDeals([]);
       try {
         // Fetch flights deals
         const flightRes = await fetch(
-          `/api/flights?departure_id=${encodeURIComponent(trip.originCity)}&arrival_id=${encodeURIComponent(
+          `/api/travel/flights?departure_id=${encodeURIComponent(trip.originCity || "Mumbai")}&arrival_id=${encodeURIComponent(
             trip.destination
-          )}&outbound_date=${trip.startDate}`
+          )}&outbound_date=${trip.startDate}`,
+          { signal }
         );
         if (flightRes.ok) {
           const flightData = await flightRes.json();
@@ -224,24 +246,33 @@ export default function PlannerPage() {
         const checkOut = new Date(trip.startDate);
         checkOut.setDate(checkOut.getDate() + trip.days);
         const hotelRes = await fetch(
-          `/api/hotels?q=${encodeURIComponent(trip.destination)}&check_in_date=${
+          `/api/travel/hotels?q=${encodeURIComponent(trip.destination)}&check_in_date=${
             trip.startDate
-          }&check_out_date=${checkOut.toISOString().split("T")[0]}`
+          }&check_out_date=${checkOut.toISOString().split("T")[0]}`,
+          { signal }
         );
         if (hotelRes.ok) {
           const hotelData = await hotelRes.json();
           setHotelDeals(hotelData.properties || []);
         }
-      } catch (err) {
-        console.error("Failed to load deals:", err);
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.error("Failed to load deals:", err);
+        }
       } finally {
-        setLoadingDeals(false);
+        if (!signal.aborted) {
+          setLoadingDeals(false);
+        }
       }
     };
 
     fetchWeatherData();
     fetchDealsData();
-  }, [trip?.destination, trip?.startDate, trip?.days, trip?.originCity]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [trip?.id, trip?.destination, trip?.startDate, trip?.days, trip?.originCity]);
 
   // Load packing suggestions via AI if list is empty
   useEffect(() => {
@@ -249,7 +280,7 @@ export default function PlannerPage() {
 
     const fetchPackingSuggestions = async () => {
       try {
-        const res = await fetch("/api/packing-suggestions", {
+        const res = await fetch("/api/ai/packing-suggestions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -388,7 +419,7 @@ export default function PlannerPage() {
       const existingActivities = activeDayData?.activities.map((a) => a.name) || [];
       const allTripActivities = trip.itinerary.flatMap((d) => d.activities).map((a) => a.name);
 
-      const res = await fetch("/api/suggest-stop", {
+      const res = await fetch("/api/ai/suggest-stop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -958,32 +989,66 @@ export default function PlannerPage() {
                   <Navigation className="w-4 h-4 text-teal-600" />
                   Flight Carrier Comparison
                 </h3>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {[
-                    { carrier: "Air India", price: 42500, time: "8h 15m", type: "Direct", color: "border-red-200 bg-red-500/5 text-red-700" },
-                    { carrier: "IndiGo", price: 38200, time: "11h 45m", type: "1 Stop", color: "border-blue-200 bg-blue-500/5 text-blue-700" }
-                  ].map((f, idx) => (
-                    <div key={idx} className={`p-3 rounded-xl border ${f.color} flex flex-col justify-between h-28 text-left`}>
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider block">{f.carrier}</span>
-                        <span className="text-[9px] opacity-75 mt-0.5 block">{f.time} • {f.type}</span>
+                {loadingDeals ? (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="p-3 rounded-xl border border-gray-100 bg-gray-50/50 animate-pulse h-28 flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="h-3 bg-gray-200 rounded w-2/3" />
+                        <div className="h-2 bg-gray-200 rounded w-1/2" />
                       </div>
-                      <div className="mt-auto">
-                        <span className="text-xs font-black block">₹{f.price.toLocaleString("en-IN")}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addExpense(`Flight: ${f.carrier}`, "Flights", f.price * trip.travelers);
-                            alert(`Added ${f.carrier} flight expense allocation of Rs ${(f.price * trip.travelers).toLocaleString()} to Budget Ledger.`);
-                          }}
-                          className="mt-1 text-[8px] font-extrabold underline cursor-pointer hover:opacity-85"
-                        >
-                          Select Carrier
-                        </button>
-                      </div>
+                      <div className="h-3 bg-gray-200 rounded w-1/3" />
                     </div>
-                  ))}
-                </div>
+                    <div className="p-3 rounded-xl border border-gray-100 bg-gray-50/50 animate-pulse h-28 flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="h-3 bg-gray-200 rounded w-2/3" />
+                        <div className="h-2 bg-gray-200 rounded w-1/2" />
+                      </div>
+                      <div className="h-3 bg-gray-200 rounded w-1/3" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {flightDeals.length > 0 ? (
+                      flightDeals.slice(0, 2).map((f: any, idx: number) => {
+                        const carrierName = f.flights?.[0]?.airline || "Air Carrier";
+                        const hrs = Math.floor(f.total_duration / 60);
+                        const mins = f.total_duration % 60;
+                        const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+                        const stopsStr = f.flights?.length > 1 ? `${f.flights.length - 1} Stop` : "Direct";
+                        const colors = [
+                          "border-red-200 bg-red-500/5 text-red-700",
+                          "border-blue-200 bg-blue-500/5 text-blue-700"
+                        ][idx % 2];
+                        
+                        return (
+                          <div key={idx} className={`p-3 rounded-xl border ${colors} flex flex-col justify-between h-28 text-left`}>
+                            <div>
+                              <span className="text-[10px] font-black uppercase tracking-wider block truncate">{carrierName}</span>
+                              <span className="text-[9px] opacity-75 mt-0.5 block">{timeStr} • {stopsStr}</span>
+                            </div>
+                            <div className="mt-auto">
+                              <span className="text-xs font-black block">₹{f.price.toLocaleString("en-IN")}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  addExpense(`Flight: ${carrierName}`, "Flights", f.price * trip.travelers);
+                                  alert(`Added ${carrierName} flight expense allocation of Rs ${(f.price * trip.travelers).toLocaleString()} to Budget Ledger.`);
+                                }}
+                                className="mt-1 text-[8px] font-extrabold underline cursor-pointer hover:opacity-85"
+                              >
+                                Select Carrier
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="col-span-2 py-6 text-center text-[10px] text-gray-400 italic border border-dashed border-gray-150 rounded-xl w-full">
+                        No flight deals found for this route.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Hotel Rate Comparison Decks */}
@@ -992,32 +1057,64 @@ export default function PlannerPage() {
                   <Hotel className="w-4 h-4 text-pink-600" />
                   Hotel Rate Comparison
                 </h3>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {[
-                    { name: "Park Hyatt", price: 18200, rating: "4.8 ★", type: "Luxury Stay", color: "border-emerald-200 bg-emerald-500/5 text-emerald-700" },
-                    { name: "APA Hotel Shinjuku", price: 7500, rating: "4.2 ★", type: "Saver Stay", color: "border-amber-200 bg-amber-500/5 text-amber-700" }
-                  ].map((h, idx) => (
-                    <div key={idx} className={`p-3 rounded-xl border ${h.color} flex flex-col justify-between h-28 text-left`}>
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider block truncate">{h.name}</span>
-                        <span className="text-[9px] opacity-75 mt-0.5 block">{h.rating} • {h.type}</span>
+                {loadingDeals ? (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="p-3 rounded-xl border border-gray-100 bg-gray-50/50 animate-pulse h-28 flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="h-3 bg-gray-200 rounded w-2/3" />
+                        <div className="h-2 bg-gray-200 rounded w-1/2" />
                       </div>
-                      <div className="mt-auto">
-                        <span className="text-xs font-black block">₹{h.price.toLocaleString("en-IN")}/n</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addExpense(`Hotel: ${h.name}`, "Hotels", h.price * trip.days);
-                            alert(`Added ${h.name} stay expense allocation of Rs ${(h.price * trip.days).toLocaleString()} to Budget Ledger.`);
-                          }}
-                          className="mt-1 text-[8px] font-extrabold underline cursor-pointer hover:opacity-85"
-                        >
-                          Select Hotel
-                        </button>
-                      </div>
+                      <div className="h-3 bg-gray-200 rounded w-1/3" />
                     </div>
-                  ))}
-                </div>
+                    <div className="p-3 rounded-xl border border-gray-100 bg-gray-50/50 animate-pulse h-28 flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="h-3 bg-gray-200 rounded w-2/3" />
+                        <div className="h-2 bg-gray-200 rounded w-1/2" />
+                      </div>
+                      <div className="h-3 bg-gray-200 rounded w-1/3" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {hotelDeals.length > 0 ? (
+                      hotelDeals.slice(0, 2).map((h: any, idx: number) => {
+                        const hotelName = h.name || "Boutique Hotel";
+                        const ratingVal = h.overall_rating ? `${h.overall_rating} ★` : "4.5 ★";
+                        const priceNum = parseInt(h.rate_per_night?.lowest?.replace(/[^0-9]/g, "")) || 4500;
+                        const colors = [
+                          "border-emerald-200 bg-emerald-500/5 text-emerald-700",
+                          "border-amber-200 bg-amber-500/5 text-amber-700"
+                        ][idx % 2];
+                        
+                        return (
+                          <div key={idx} className={`p-3 rounded-xl border ${colors} flex flex-col justify-between h-28 text-left`}>
+                            <div>
+                              <span className="text-[10px] font-black uppercase tracking-wider block truncate">{hotelName}</span>
+                              <span className="text-[9px] opacity-75 mt-0.5 block">{ratingVal} • Hotel Stay</span>
+                            </div>
+                            <div className="mt-auto">
+                              <span className="text-xs font-black block">₹{priceNum.toLocaleString("en-IN")}/n</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  addExpense(`Hotel: ${hotelName}`, "Hotels", priceNum * trip.days);
+                                  alert(`Added ${hotelName} stay expense allocation of Rs ${(priceNum * trip.days).toLocaleString()} to Budget Ledger.`);
+                                }}
+                                className="mt-1 text-[8px] font-extrabold underline cursor-pointer hover:opacity-85"
+                              >
+                                Select Hotel
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="col-span-2 py-6 text-center text-[10px] text-gray-400 italic border border-dashed border-gray-150 rounded-xl w-full">
+                        No hotel rates found for this destination.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* API Backup Hotel booking cards */}

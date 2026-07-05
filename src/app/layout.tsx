@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomDock from "@/components/BottomDock";
 import { ThemeProvider } from "next-themes";
+import SWRegistrar from "@/components/SWRegistrar";
 
 export const metadata: Metadata = {
   title: "TripMitra — AI Travel Planner",
@@ -39,6 +40,16 @@ export default function RootLayout({
       */}
       <body className="antialiased text-gray-950 bg-[var(--bg-primary)] selection:bg-teal-500/10 selection:text-teal-900 dark:text-gray-100">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {/* Service Worker PWA Registrar */}
+          <SWRegistrar />
+
+          {/* Drifting gradient blob background — GPU-composited, sits behind all glass panels */}
+          <div className="animated-bg" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+
           <main className="min-h-screen pb-28 md:pt-[84px]">{children}</main>
 
           {/* Global Bottom Navigation Dock */}
