@@ -4,16 +4,23 @@ import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { 
   MapPin, Calendar, Users, Globe, BookOpen, AlertCircle, ShieldAlert,
-  Plus, Link2, UserPlus, Copy, Check, Bell, BellOff, X 
+  Plus, Link2, UserPlus, Copy, Check, Bell, BellOff, X, Trash2, Mail
 } from "lucide-react";
 import { Trip, updateTripRecord } from "@/lib/store";
-import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import ExportButtons from "./ExportButtons";
 import { motion, AnimatePresence } from "framer-motion";
+import { TripDay, TripActivity } from "@/types/trip";
 
 interface TripHeaderProps {
   trip: Trip;
   isInternational: boolean | null;
+}
+
+interface Reminder {
+  id: string;
+  dayNumber: number;
+  activityName: string;
+  text: string;
 }
 
 export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
@@ -21,16 +28,28 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
   const pathname = usePathname();
   const isJournalPage = pathname?.endsWith("/journal");
 
-  // Manage custom co-traveler names
+  // Dialog and panel states
   const [showTravellersModal, setShowTravellersModal] = useState(false);
   const [namesInput, setNamesInput] = useState<string[]>([]);
-
-  // Invite states
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteTab, setInviteTab] = useState<"link" | "name">("link");
+  const [inviteTab, setInviteTab] = useState<"link" | "name" | "email">("link");
+  
+  // Custom modals/drawers
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [showRemindersModal, setShowRemindersModal] = useState(false);
+
+  // Invitation fields
   const [newCollabName, setNewCollabName] = useState("");
+  const [newCollabEmail, setNewCollabEmail] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSentSuccess, setEmailSentSuccess] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [notifPermission, setNotifPermission] = useState<string>("default");
+
+  // Reminders fields
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [reminderText, setReminderText] = useState("");
+  const [reminderDay, setReminderDay] = useState(1);
+  const [reminderActivity, setReminderActivity] = useState("");
 
   const getTravellerNames = (t: Trip) => {
     if (t.travellerNames && t.travellerNames.length > 0) {
@@ -47,17 +66,60 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
     setNamesInput(getTravellerNames(trip));
   }, [trip.travellerNames, trip.travelers]);
 
+  // Load reminders from localStorage
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setNotifPermission(Notification.permission);
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(`tripmitra:reminders:${trip.id}`);
+      if (stored) {
+        setReminders(JSON.parse(stored));
+      }
     }
-  }, []);
+  }, [trip.id]);
 
-  const handleSharePlan = () => {
-    if (typeof window === "undefined") return;
-    const url = `${window.location.origin}/share/${trip.id}`;
-    navigator.clipboard.writeText(url);
-    alert(`Shareable read-only preview link copied to clipboard:\n${url}`);
+  const saveRemindersToStorage = (newReminders: Reminder[]) => {
+    setReminders(newReminders);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`tripmitra:reminders:${trip.id}`, JSON.stringify(newReminders));
+    }
+  };
+
+  const handleAddCollab = async (nameToAdd: string) => {
+    const updatedNames = [...namesInput, nameToAdd.trim()];
+    setNamesInput(updatedNames);
+    await updateTripRecord({
+      ...trip,
+      travelers: updatedNames.length,
+      travellerNames: updatedNames
+    });
+  };
+
+  const handleAddCollabByName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCollabName.trim()) return;
+    await handleAddCollab(newCollabName.trim());
+    setNewCollabName("");
+    alert(`${newCollabName.trim()} added as a collaborator!`);
+  };
+
+  const handleSendEmailInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCollabEmail.trim()) return;
+
+    setIsSendingEmail(true);
+    // Simulate sending email
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setIsSendingEmail(false);
+    setEmailSentSuccess(true);
+    
+    // Automatically add to active collaborators stack as an example of integration
+    const username = newCollabEmail.split("@")[0];
+    await handleAddCollab(username);
+
+    setTimeout(() => {
+      setEmailSentSuccess(false);
+      setNewCollabEmail("");
+      setShowInviteModal(false);
+    }, 2000);
   };
 
   const handleCopyInviteLink = () => {
@@ -68,173 +130,319 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const handleAddCollabByName = async (e: React.FormEvent) => {
+  const handleAddReminder = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCollabName.trim()) return;
+    if (!reminderText.trim()) return;
 
-    const updatedNames = [...namesInput, newCollabName.trim()];
-    setNamesInput(updatedNames);
-    
-    await updateTripRecord({
-      ...trip,
-      travelers: updatedNames.length,
-      travellerNames: updatedNames
-    });
+    const newReminder: Reminder = {
+      id: Math.random().toString(36).substring(2, 9),
+      dayNumber: reminderDay,
+      activityName: reminderActivity || "General Info",
+      text: reminderText.trim()
+    };
 
-    setNewCollabName("");
-    alert(`${newCollabName.trim()} added to the collaborator list!`);
+    saveRemindersToStorage([...reminders, newReminder]);
+    setReminderText("");
+    setReminderActivity("");
   };
 
-  const handleJournalToggle = () => {
-    if (isJournalPage) {
-      router.push(`/planner/${trip.id}`);
-    } else {
-      router.push(`/planner/${trip.id}/journal`);
-    }
+  const handleDeleteReminder = (id: string) => {
+    saveRemindersToStorage(reminders.filter((r) => r.id !== id));
   };
 
   return (
-    <div className="flex flex-col gap-4 mb-8 border-b border-gray-200/60 pb-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        
-        {/* Left Side Metadata Panel */}
-        <div className="flex-1 p-5 rounded-2xl glass-panel border border-gray-250/30 bg-white/70 shadow-sm text-left">
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-indigo-700 font-extrabold bg-indigo-500/10 px-2.5 py-0.75 rounded-full">
-              Trip Active • {trip.days} Days Itinerary
-            </span>
-            {isInternational !== null && (
-              isInternational ? (
-                <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-rose-700 font-extrabold bg-rose-500/10 px-2.5 py-0.75 rounded-full border border-rose-500/20">
-                  ✈️ International • Visa Required
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700 font-extrabold bg-emerald-500/10 px-2.5 py-0.75 rounded-full border border-emerald-500/20">
-                  🚗 Domestic Trip
-                </span>
-              )
-            )}
-          </div>
-          <h1 className="text-2xl md:text-3.5xl font-black font-display text-gray-900 tracking-tight leading-none mb-2">
-            {trip.destination}
-          </h1>
-          <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-gray-500 mt-2">
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-pink-500" /> Origin: {trip.originCity || "Mumbai"}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-indigo-500" /> Start: {trip.startDate || "TBD"}
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowTravellersModal(true)}
-              className="flex items-center gap-1.5 hover:bg-gray-150/80 dark:hover:bg-teal-900/40 px-2 py-1 rounded-lg transition-colors cursor-pointer text-left focus:outline-none"
-              title="Edit Traveler Names"
-            >
-              <Users className="w-4 h-4 text-teal-600" />
-              <span>{trip.travelers} Traveler(s)</span>
-              <span className="text-[9px] text-indigo-600 dark:text-teal-400 font-bold hover:underline ml-1">(Edit)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right Side Control Center */}
-        <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-stretch sm:items-center gap-4 self-stretch lg:self-auto">
+    <div className="w-full mb-8">
+      {/* Cohesive unified glass panel container */}
+      <div className="w-full p-6 rounded-3xl glass-panel border border-slate-200/50 bg-white/70 shadow-sm text-left">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           
-          {/* Collaborator Avatars Row */}
-          <div className="flex flex-col gap-2 p-4 rounded-2xl border border-gray-200 bg-gray-50/50 shadow-sm min-w-[240px] text-left">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-extrabold text-gray-450 uppercase tracking-widest">
-                Collaborators
+          {/* Left Block: Badges, Title & Meta */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-indigo-700 font-extrabold bg-indigo-500/10 px-2.5 py-0.75 rounded-full">
+                Trip Active • {trip.days} Days
               </span>
-              <span className="text-[9px] text-gray-450 font-bold bg-white px-2 py-0.5 rounded-full shadow-xs border border-gray-150">
-                {namesInput.length} Active
-              </span>
+              {isInternational !== null && (
+                isInternational ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-rose-700 font-extrabold bg-rose-500/10 px-2.5 py-0.75 rounded-full border border-rose-500/20 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.3)]">
+                    ✈️ International • Visa Required
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700 font-extrabold bg-emerald-500/10 px-2.5 py-0.75 rounded-full border border-emerald-500/20">
+                    🚗 Domestic Trip
+                  </span>
+                )
+              )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-              {namesInput.map((name, idx) => {
-                const colorClass = [
-                  "bg-teal-500/10 border-teal-500/25 text-teal-700",
-                  "bg-indigo-500/10 border-indigo-500/25 text-indigo-700",
-                  "bg-pink-500/10 border-pink-500/25 text-pink-700",
-                  "bg-amber-500/10 border-amber-500/25 text-amber-700",
-                  "bg-purple-500/10 border-purple-500/25 text-purple-700",
-                  "bg-emerald-500/10 border-emerald-500/25 text-emerald-700"
-                ][idx % 6];
+            <h1 className="text-2xl md:text-3.5xl font-black font-display text-gray-900 tracking-tight leading-none mb-3 truncate">
+              {trip.destination}
+            </h1>
 
-                return (
-                  <div 
-                    key={idx} 
-                    className={`w-8 h-8 rounded-full border flex items-center justify-center text-[10px] font-black shadow-sm ${colorClass}`}
-                    title={name}
-                  >
-                    {name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
-                  </div>
-                );
-              })}
-
+            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-pink-500" /> Origin: {trip.originCity || "Mumbai"}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-indigo-500" /> Start: {trip.startDate || "TBD"}
+              </span>
               <button
                 type="button"
-                onClick={() => setShowInviteModal(true)}
-                className="w-8 h-8 rounded-full border border-dashed border-gray-300 hover:border-teal-500 bg-white hover:bg-teal-50/20 text-gray-450 hover:text-teal-650 flex items-center justify-center transition-colors cursor-pointer focus:outline-none"
-                title="Invite Collaborator"
+                onClick={() => setShowTravellersModal(true)}
+                className="flex items-center gap-1.5 hover:bg-gray-150/80 px-2 py-1 rounded-lg transition-colors cursor-pointer text-left focus:outline-none"
+                title="Edit Traveler Names"
               >
-                <Plus className="w-4.5 h-4.5" />
+                <Users className="w-4 h-4 text-teal-600" />
+                <span>{trip.travelers} Traveler(s)</span>
+                <span className="text-[9px] text-indigo-650 font-extrabold hover:underline ml-1">(Edit)</span>
               </button>
             </div>
           </div>
 
-          {/* Action Button Grid */}
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={handleSharePlan}
-                className="flex items-center justify-center gap-1 bg-white border border-gray-200 hover:bg-gray-50 text-teal-700 font-extrabold text-[11px] px-3.5 py-2.5 rounded-full shadow-sm transition-colors"
-              >
-                <Globe className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
-                <span>Share</span>
-              </button>
+          {/* Right Block: Aligned single row for Collaborators & Kebab */}
+          <div className="flex items-center gap-4 self-start md:self-center">
+            
+            {/* Collaborator Avatars */}
+            <div className="flex items-center gap-1 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex -space-x-2 overflow-hidden mr-1">
+                <AnimatePresence initial={false}>
+                  {namesInput.map((name, idx) => {
+                    const colorClass = [
+                      "bg-teal-500 border-white text-white",
+                      "bg-indigo-500 border-white text-white",
+                      "bg-pink-500 border-white text-white",
+                      "bg-amber-500 border-white text-white",
+                      "bg-purple-500 border-white text-white",
+                      "bg-emerald-500 border-white text-white"
+                    ][idx % 6];
 
-              <button
-                type="button"
-                onClick={handleJournalToggle}
-                className={`flex items-center justify-center gap-1 border font-extrabold text-[11px] px-3.5 py-2.5 rounded-full shadow-sm transition-all ${
-                  isJournalPage
-                    ? "bg-amber-500 border-amber-600 text-white hover:bg-amber-600"
-                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>{isJournalPage ? "Journal" : "Timeline"}</span>
-              </button>
+                    return (
+                      <motion.div
+                        key={name + "-" + idx}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                        className={`w-7.5 h-7.5 rounded-full border-2 flex items-center justify-center text-[9px] font-black shadow-sm select-none ${colorClass}`}
+                        title={name}
+                      >
+                        {name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
 
-              <button
-                type="button"
-                onClick={async () => {
-                  const { requestAndSchedule } = await import("@/lib/notificationScheduler");
-                  await requestAndSchedule(trip);
-                  if (typeof window !== "undefined" && "Notification" in window) {
-                    setNotifPermission(Notification.permission);
-                  }
-                }}
-                className="flex items-center justify-center gap-1 bg-white border border-gray-200 hover:bg-gray-50 text-indigo-700 font-extrabold text-[11px] px-3.5 py-2.5 rounded-full shadow-sm transition-colors"
-              >
-                {notifPermission === "granted" ? (
-                  <Bell className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-                ) : (
-                  <BellOff className="w-3.5 h-3.5 text-gray-400" />
-                )}
-                <span>Reminders</span>
-              </button>
+              {/* Add Collaborator Button */}
+              <div className="group relative">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(true)}
+                  className="w-7.5 h-7.5 rounded-full border border-dashed border-gray-300 hover:border-teal-500 bg-white hover:bg-teal-50/20 text-gray-450 hover:text-teal-650 flex items-center justify-center transition-colors cursor-pointer focus:outline-none"
+                  aria-label="Invite Collaborator"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+                <span className="absolute bottom-full right-1/2 translate-x-1/2 mb-2 hidden group-hover:inline-block bg-gray-900 text-white text-[9px] px-2 py-1 rounded shadow-md whitespace-nowrap z-50 pointer-events-none">
+                  Invite Co-Traveler
+                </span>
+              </div>
             </div>
 
-            <ExportButtons trip={trip} />
+            {/* Consolidating Export/Share actions inside Kebab Menu */}
+            <ExportButtons 
+              trip={trip} 
+              onTimelineClick={() => setShowTimelineModal(true)}
+              onRemindersClick={() => setShowRemindersModal(true)}
+            />
           </div>
 
         </div>
       </div>
+
+      {/* --- TIMELINE PREVIEW MODAL --- */}
+      <AnimatePresence>
+        {showTimelineModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTimelineModal(false)}
+              className="absolute inset-0 bg-gray-950/25 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-lg rounded-3xl glass-panel border border-slate-200 bg-white p-6 shadow-2xl flex flex-col max-h-[80vh] text-left"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <div>
+                  <h3 className="text-lg font-black font-display text-gray-900">Itinerary Timeline</h3>
+                  <p className="text-[10px] text-gray-500 font-semibold mt-0.5">Quick scrollable overview of all planned stops</p>
+                </div>
+                <button
+                  onClick={() => setShowTimelineModal(false)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Timeline */}
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar relative pl-4">
+                <div className="absolute left-[23px] top-2 bottom-2 w-0.5 border-l-2 border-dashed border-slate-200" />
+
+                {trip.itinerary.map((day: TripDay) => (
+                  <div key={day.dayNumber} className="relative pl-8">
+                    {/* Bullet */}
+                    <div className="absolute left-[-2px] top-1 w-4 h-4 rounded-full border-2 border-amber-500 bg-white flex items-center justify-center z-10" />
+
+                    <div>
+                      <h4 className="text-xs font-black text-amber-650 tracking-wider uppercase mb-1">
+                        Day {day.dayNumber} — {day.theme || "General Sights"}
+                      </h4>
+
+                      {day.activities.length === 0 ? (
+                        <p className="text-[11px] text-gray-400 italic">No scheduled activities for this day.</p>
+                      ) : (
+                        <div className="space-y-3 mt-2 pl-2">
+                          {day.activities.map((act: TripActivity, idx: number) => (
+                            <div key={act.id || idx} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
+                              <span className="text-[9px] font-extrabold uppercase bg-slate-200 text-slate-650 px-1.5 py-0.5 rounded">
+                                {act.time || "Morning"}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <h5 className="text-[11px] font-bold text-gray-800">{act.name}</h5>
+                                <p className="text-[10px] text-gray-500 mt-0.5 truncate">{act.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- REMINDERS MODAL --- */}
+      <AnimatePresence>
+        {showRemindersModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowRemindersModal(false)}
+              className="absolute inset-0 bg-gray-950/25 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-md rounded-3xl glass-panel border border-slate-200 bg-white p-6 shadow-2xl flex flex-col max-h-[80vh] text-left"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <div>
+                  <h3 className="text-lg font-black font-display text-gray-900">Trip Reminders</h3>
+                  <p className="text-[10px] text-gray-500 font-semibold mt-0.5">Manage localized alert notes for your travel agenda</p>
+                </div>
+                <button
+                  onClick={() => setShowRemindersModal(false)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Set Reminder Form */}
+              <form onSubmit={handleAddReminder} className="space-y-3 mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Target Day</label>
+                    <select
+                      value={reminderDay}
+                      onChange={(e) => setReminderDay(Number(e.target.value))}
+                      className="w-full glass-input px-3.5 py-2 rounded-xl text-xs focus:outline-none"
+                    >
+                      {trip.itinerary.map((d) => (
+                        <option key={d.dayNumber} value={d.dayNumber}>Day {d.dayNumber}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Activity Name</label>
+                    <select
+                      value={reminderActivity}
+                      onChange={(e) => setReminderActivity(e.target.value)}
+                      className="w-full glass-input px-3.5 py-2 rounded-xl text-xs focus:outline-none"
+                    >
+                      <option value="">General (No Stop)</option>
+                      {trip.itinerary.find((d) => d.dayNumber === reminderDay)?.activities.map((a) => (
+                        <option key={a.id} value={a.name}>{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Reminder Alert Note</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Check check-in window, Pack waterproof bag"
+                      value={reminderText}
+                      onChange={(e) => setReminderText(e.target.value)}
+                      className="flex-grow glass-input px-3.5 py-2 rounded-xl text-xs focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* Reminders List */}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
+                <span className="text-[9px] font-bold text-gray-450 uppercase tracking-widest block mb-1">Active Reminders ({reminders.length})</span>
+                {reminders.length === 0 ? (
+                  <p className="text-[11px] text-gray-400 italic text-center py-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">No scheduled reminders yet. Add one above!</p>
+                ) : (
+                  reminders.map((rem) => (
+                    <div key={rem.id} className="p-3 rounded-xl border border-slate-100 bg-white shadow-xs flex items-center justify-between gap-2 group/item">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[8px] font-black uppercase text-emerald-700 bg-emerald-100 px-1 rounded">Day {rem.dayNumber}</span>
+                          <span className="text-[8.5px] font-bold text-gray-450 truncate max-w-[150px]">{rem.activityName}</span>
+                        </div>
+                        <p className="text-[11px] font-medium text-gray-800 mt-1">{rem.text}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteReminder(rem.id)}
+                        className="p-1.5 rounded-lg hover:bg-rose-50 text-gray-400 hover:text-rose-600 transition-colors opacity-80 hover:opacity-100"
+                        title="Delete reminder"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* --- MANAGE TRAVELERS MODAL --- */}
       <AnimatePresence>
@@ -251,11 +459,11 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-sm rounded-2xl glass-panel border-gray-200 bg-white p-6 shadow-xl flex flex-col gap-4 text-left"
+              className="relative w-full max-w-sm rounded-3xl glass-panel border border-slate-200 bg-white p-6 shadow-xl flex flex-col gap-4 text-left"
             >
               <div>
                 <h3 className="text-base font-bold font-display text-gray-900">Edit Traveler Names</h3>
-                <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Input names of all travelers. These names will be used for logging splits on the budget page.</p>
+                <p className="text-[10px] text-gray-500 mt-0.5 font-semibold">Names will sync dynamically to compute budget page splits.</p>
               </div>
 
               <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
@@ -281,7 +489,7 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
                 <button
                   type="button"
                   onClick={() => setShowTravellersModal(false)}
-                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-505 transition-colors"
                 >
                   Cancel
                 </button>
@@ -322,7 +530,7 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-sm rounded-2xl glass-panel border-gray-200 bg-white p-6 shadow-xl flex flex-col gap-4 text-left"
+              className="relative w-full max-w-sm rounded-3xl glass-panel border border-slate-200 bg-white p-6 shadow-xl flex flex-col gap-4 text-left"
             >
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div>
@@ -337,29 +545,38 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
                 </button>
               </div>
 
-              {/* Tabs */}
-              <div className="flex p-0.5 rounded-xl bg-gray-100 border border-gray-200 text-xs font-bold w-full">
+              {/* Extended Tabs including Email Invite */}
+              <div className="flex p-0.5 rounded-xl bg-gray-100 border border-gray-150 text-[8.5px] font-bold w-full">
                 <button
                   type="button"
                   onClick={() => setInviteTab("link")}
-                  className={`flex-1 py-2 rounded-lg text-center transition-all uppercase tracking-wider text-[9px] ${
+                  className={`flex-1 py-1.75 rounded-lg text-center transition-all uppercase tracking-wider ${
                     inviteTab === "link" ? "bg-white text-teal-700 shadow-sm" : "text-gray-400"
                   }`}
                 >
-                  Shareable Link
+                  Invite Link
                 </button>
                 <button
                   type="button"
                   onClick={() => setInviteTab("name")}
-                  className={`flex-1 py-2 rounded-lg text-center transition-all uppercase tracking-wider text-[9px] ${
+                  className={`flex-1 py-1.75 rounded-lg text-center transition-all uppercase tracking-wider ${
                     inviteTab === "name" ? "bg-white text-teal-700 shadow-sm" : "text-gray-400"
                   }`}
                 >
-                  Add by Name
+                  Add By Name
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInviteTab("email")}
+                  className={`flex-1 py-1.75 rounded-lg text-center transition-all uppercase tracking-wider ${
+                    inviteTab === "email" ? "bg-white text-teal-700 shadow-sm" : "text-gray-400"
+                  }`}
+                >
+                  Email Invite
                 </button>
               </div>
 
-              {inviteTab === "link" ? (
+              {inviteTab === "link" && (
                 <div className="space-y-3 pt-2">
                   <p className="text-xs text-gray-500 leading-relaxed font-semibold">
                     Copy the invitation link below and share it with your friends. When they join, they will be registered as trip collaborators.
@@ -375,38 +592,73 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
                     <button
                       type="button"
                       onClick={handleCopyInviteLink}
-                      className="p-2.5 rounded-xl bg-teal-650 hover:bg-teal-700 text-white shadow transition-colors"
+                      className="p-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow transition-colors"
                       title="Copy invite link"
                     >
                       {copiedLink ? <Check className="w-4.5 h-4.5" /> : <Copy className="w-4.5 h-4.5" />}
                     </button>
                   </div>
-                  {copiedLink && (
-                    <span className="text-[9px] font-bold text-emerald-600 block mt-1">Copied to clipboard!</span>
-                  )}
                 </div>
-              ) : (
+              )}
+
+              {inviteTab === "name" && (
                 <form onSubmit={handleAddCollabByName} className="space-y-3 pt-2">
                   <p className="text-xs text-gray-500 leading-relaxed font-semibold">
                     Quickly add a co-traveler's name to compute splits in the ledger and display them as a participant on this plan.
                   </p>
 
                   <div>
-                    <label className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Co-Traveler Name</label>
+                    <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Co-Traveler Name</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={newCollabName}
                         onChange={(e) => setNewCollabName(e.target.value)}
-                        placeholder="e.g. Rahul, Priya..."
+                        placeholder="Rahul, Priya..."
                         required
                         className="flex-grow glass-input px-3.5 py-2.5 rounded-xl text-xs placeholder-gray-400 focus:outline-none"
                       />
                       <button
                         type="submit"
-                        className="px-4 py-2.5 rounded-xl bg-teal-650 hover:bg-teal-700 text-white font-bold text-xs shadow transition-colors"
+                        className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow transition-colors"
                       >
                         Add
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
+
+              {inviteTab === "email" && (
+                <form onSubmit={handleSendEmailInvite} className="space-y-3 pt-2">
+                  <p className="text-xs text-gray-500 leading-relaxed font-semibold">
+                    Send a direct email invitation. Once submitted, they will be registered to sync planning.
+                  </p>
+
+                  <div>
+                    <label className="text-[9px] text-gray-400 font-bold uppercase block mb-1">Email Address</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        value={newCollabEmail}
+                        onChange={(e) => setNewCollabEmail(e.target.value)}
+                        placeholder="co-traveler@email.com"
+                        required
+                        className="flex-grow glass-input px-3.5 py-2.5 rounded-xl text-xs placeholder-gray-400 focus:outline-none"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isSendingEmail || emailSentSuccess}
+                        className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold text-xs shadow transition-all flex items-center gap-1.5"
+                      >
+                        {isSendingEmail ? (
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : emailSentSuccess ? (
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        ) : (
+                          <Mail className="w-3.5 h-3.5" />
+                        )}
+                        <span>{emailSentSuccess ? "Sent" : "Invite"}</span>
                       </button>
                     </div>
                   </div>
