@@ -577,14 +577,14 @@ export default function BudgetPage() {
             </div>
           </div>
 
-          {/* DYNAMIC SVG DONUT CHART */}
-          <ScrollReveal delay={0.1}>
-            <div className="p-6 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left shadow-sm">
-              <h3 className="text-xs font-bold font-display uppercase tracking-wider text-gray-700 dark:text-teal-200 mb-4">
-                Category Breakdown
-              </h3>
-              
-              {hasSpend ? (
+          {/* DYNAMIC SVG DONUT CHART — only shown when there are expenses */}
+          {hasSpend && (
+            <ScrollReveal delay={0.1}>
+              <div className="p-6 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left shadow-sm">
+                <h3 className="text-xs font-bold font-display uppercase tracking-wider text-gray-700 dark:text-teal-200 mb-4">
+                  Category Breakdown
+                </h3>
+
                 <div className="flex flex-col sm:flex-row items-center gap-8 justify-around">
                   <div className="relative w-36 h-36">
                     <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
@@ -619,25 +619,18 @@ export default function BudgetPage() {
                           <span className="text-gray-500 dark:text-teal-300 font-medium">{seg.category}</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-bold font-mono text-gray-855 dark:text-white" style={{ color: seg.color }}>{seg.percentage}%</span>
+                          <span className="font-bold font-mono dark:text-white" style={{ color: seg.color }}>{seg.percentage}%</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-6 px-4 rounded-xl border border-dashed border-gray-300 dark:border-teal-550/20 bg-gray-50/50 dark:bg-[#0d1f1c]/30 text-center w-full">
-                  <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 dark:border-teal-500/20 flex items-center justify-center mb-3">
-                    <Landmark className="w-5 h-5 text-gray-400 dark:text-teal-400/70" />
-                  </div>
-                  <p className="text-xs font-bold text-gray-600 dark:text-teal-300">No spend yet</p>
-                  <p className="text-[10px] text-gray-400 dark:text-teal-500 mt-1">Expenses you log will show in this breakdown</p>
-                </div>
-              )}
-            </div>
-          </ScrollReveal>
+              </div>
+            </ScrollReveal>
+          )}
 
-          {/* SETTLE UP LEDGER */}
+          {/* SETTLE UP LEDGER — only shown when shared expenses exist */}
+          {hasSharedExpenses && (
           <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left shadow-sm">
             <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-teal-500/10 pb-3">
               <h3 className="text-xs font-bold font-display uppercase tracking-wider text-gray-700 dark:text-teal-200">
@@ -731,6 +724,7 @@ export default function BudgetPage() {
               </div>
             )}
           </div>
+          )}
 
         </div>
 

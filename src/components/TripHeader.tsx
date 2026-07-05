@@ -159,16 +159,16 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
           {/* Left Block: Badges, Title & Meta */}
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-indigo-700 font-extrabold bg-indigo-500/10 px-2.5 py-0.75 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-indigo-700 font-extrabold bg-indigo-500/10 px-2.5 py-0.75 rounded-full whitespace-nowrap">
                 Trip Active • {trip.days} Days
               </span>
               {isInternational !== null && (
                 isInternational ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-rose-700 font-extrabold bg-rose-500/10 px-2.5 py-0.75 rounded-full border border-rose-500/20 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.3)]">
+                  <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-rose-700 font-extrabold bg-rose-500/10 px-2.5 py-0.75 rounded-full border border-rose-500/20 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.3)] whitespace-nowrap">
                     ✈️ International • Visa Required
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700 font-extrabold bg-emerald-500/10 px-2.5 py-0.75 rounded-full border border-emerald-500/20">
+                  <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700 font-extrabold bg-emerald-500/10 px-2.5 py-0.75 rounded-full border border-emerald-500/20 whitespace-nowrap">
                     🚗 Domestic Trip
                   </span>
                 )
@@ -200,7 +200,7 @@ export default function TripHeader({ trip, isInternational }: TripHeaderProps) {
           </div>
 
           {/* Right Block: Aligned single row for Collaborators & Kebab */}
-          <div className="flex items-center gap-4 self-start md:self-center">
+          <div className="flex items-center gap-4 py-1">
             
             {/* Collaborator Avatars */}
             <div className="flex items-center gap-1 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">

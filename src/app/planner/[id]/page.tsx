@@ -798,10 +798,10 @@ export default function PlannerPage() {
         {/* COLUMN 3: SIDEBAR UTILITIES TABS */}
         <div id="sidebar-utilities-container" className="flex flex-col gap-4 max-h-[70vh]">
           {/* Sidebar Tab Header */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-gray-50 border border-gray-250 text-xs font-bold w-full">
+          <div className="flex items-stretch gap-1.5 p-1 rounded-xl bg-gray-50 border border-gray-250 text-xs font-bold w-full">
             <button
               onClick={() => setActiveSidebarTab("places")}
-              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+              className={`flex-1 py-1.5 rounded-lg text-center text-[10px] whitespace-nowrap transition-all ${
                 activeSidebarTab === "places" ? "bg-white text-teal-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
               }`}
             >
@@ -809,7 +809,7 @@ export default function PlannerPage() {
             </button>
             <button
               onClick={() => setActiveSidebarTab("weather")}
-              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+              className={`flex-1 py-1.5 rounded-lg text-center text-[10px] whitespace-nowrap transition-all ${
                 activeSidebarTab === "weather" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
               }`}
             >
@@ -817,7 +817,7 @@ export default function PlannerPage() {
             </button>
             <button
               onClick={() => setActiveSidebarTab("deals")}
-              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+              className={`flex-1 py-1.5 rounded-lg text-center text-[10px] whitespace-nowrap transition-all ${
                 activeSidebarTab === "deals" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
               }`}
             >
@@ -825,11 +825,11 @@ export default function PlannerPage() {
             </button>
             <button
               onClick={() => setActiveSidebarTab("assistant")}
-              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+              className={`flex-1 py-1.5 rounded-lg text-center text-[10px] whitespace-nowrap transition-all ${
                 activeSidebarTab === "assistant" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
               }`}
             >
-              AI Assistant
+              AI Help
             </button>
           </div>
 
