@@ -541,10 +541,10 @@ export default function PlannerPage() {
                 <ScrollReveal key={day.dayNumber} delay={idx * 0.06}>
                   <div
                     className={`rounded-2xl border transition-all duration-300 ${
-                    isActive 
-                      ? "border-teal-500/30 bg-teal-50/50" 
-                      : "border-gray-200 bg-white hover:border-gray-300"
-                  }`}
+ isActive 
+ ? "border-teal-500/30 bg-teal-50/50" 
+ : "border-gray-200 bg-white hover:border-gray-300"
+ }`}
                 >
                   {/* Day Header */}
                   <div
@@ -581,7 +581,7 @@ export default function PlannerPage() {
                             deleteDay(day.dayNumber);
                           }
                         }}
-                        className="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        className="p-1 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                         title={`Delete Day ${day.dayNumber}`}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -664,8 +664,8 @@ export default function PlannerPage() {
                                       type="button"
                                       onClick={() => editActivity(day.dayNumber, act.id, { rating: star })}
                                       className={`text-base transition-transform active:scale-125 ${
-                                        star <= (act.rating || 0) ? "text-amber-500 scale-110" : "text-gray-200 hover:text-amber-300"
-                                      }`}
+ star <= (act.rating || 0) ? "text-amber-500 scale-110" : "text-gray-200 hover:text-amber-300"
+ }`}
                                     >
                                       ★
                                     </button>
@@ -696,12 +696,12 @@ export default function PlannerPage() {
                               <div className="flex-1 min-w-0 text-left">
                                 <div className="flex items-center justify-between">
                                   <h4 className="text-xs font-bold text-gray-800 truncate">{act.name}</h4>
-                                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="flex items-center gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                     {index > 0 && (
                                       <button
                                         type="button"
                                         onClick={() => moveActivity(day.dayNumber, index, "up")}
-                                        className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800"
+                                        className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800 relative after:absolute after:inset-[-8px] after:content-['']"
                                         title="Move Up"
                                       >
                                         <ChevronUp className="w-3 h-3" />
@@ -711,7 +711,7 @@ export default function PlannerPage() {
                                       <button
                                         type="button"
                                         onClick={() => moveActivity(day.dayNumber, index, "down")}
-                                        className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800"
+                                        className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800 relative after:absolute after:inset-[-8px] after:content-['']"
                                         title="Move Down"
                                       >
                                         <ChevronDown className="w-3 h-3" />
@@ -720,7 +720,7 @@ export default function PlannerPage() {
                                     <button
                                       type="button"
                                       onClick={() => openEditModal(day.dayNumber, act)}
-                                      className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800"
+                                      className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-800 relative after:absolute after:inset-[-8px] after:content-['']"
                                       title="Edit Stop"
                                     >
                                       <Edit3 className="w-3 h-3" />
@@ -728,7 +728,7 @@ export default function PlannerPage() {
                                     <button
                                       type="button"
                                       onClick={() => deleteActivity(day.dayNumber, act.id)}
-                                      className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-pink-600"
+                                      className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-pink-600 relative after:absolute after:inset-[-8px] after:content-['']"
                                       title="Delete Stop"
                                     >
                                       <Trash2 className="w-3 h-3" />
@@ -773,7 +773,7 @@ export default function PlannerPage() {
                   addDay(themeInput.trim());
                 }
               }}
-              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl border-2 border-dashed border-slate-200 dark:border-teal-500/20 hover:border-teal-500/50 bg-slate-50/50 dark:bg-teal-950/10 hover:bg-teal-500/5 transition-all text-xs font-bold text-slate-600 dark:text-teal-350 hover:text-teal-700 dark:hover:text-teal-200 active:scale-[0.99] shadow-sm mt-1"
+              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl border-2 border-dashed border-slate-200 hover:border-teal-500/50 bg-slate-50/50 hover:bg-teal-500/5 transition-all text-xs font-bold text-slate-600 hover:text-teal-700 active:scale-[0.99] shadow-sm mt-1"
             >
               <Plus className="w-4 h-4" />
               <span>Add Day to Itinerary</span>
@@ -802,32 +802,32 @@ export default function PlannerPage() {
             <button
               onClick={() => setActiveSidebarTab("places")}
               className={`flex-1 py-1.5 rounded-lg text-center text-[10px] whitespace-nowrap transition-all ${
-                activeSidebarTab === "places" ? "bg-white text-teal-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
-              }`}
+ activeSidebarTab === "places" ? "bg-white text-teal-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
+ }`}
             >
               Stops
             </button>
             <button
               onClick={() => setActiveSidebarTab("weather")}
               className={`flex-1 py-1.5 rounded-lg text-center text-[10px] whitespace-nowrap transition-all ${
-                activeSidebarTab === "weather" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
-              }`}
+ activeSidebarTab === "weather" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
+ }`}
             >
               Weather
             </button>
             <button
               onClick={() => setActiveSidebarTab("deals")}
               className={`flex-1 py-1.5 rounded-lg text-center text-[10px] whitespace-nowrap transition-all ${
-                activeSidebarTab === "deals" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
-              }`}
+ activeSidebarTab === "deals" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
+ }`}
             >
               Deals
             </button>
             <button
               onClick={() => setActiveSidebarTab("assistant")}
               className={`flex-1 py-1.5 rounded-lg text-center text-[10px] whitespace-nowrap transition-all ${
-                activeSidebarTab === "assistant" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
-              }`}
+ activeSidebarTab === "assistant" ? "bg-white text-indigo-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-800"
+ }`}
             >
               AI Help
             </button>
@@ -1214,10 +1214,10 @@ export default function PlannerPage() {
                     <div key={index} className={`flex flex-col ${msg.sender === "Kunth" ? "items-end" : "items-start"}`}>
                       <span className="text-[9px] text-gray-400 font-bold mb-0.5">{msg.sender}</span>
                       <div className={`px-3 py-1.5 rounded-2xl max-w-[85%] ${
-                        msg.sender === "Kunth" 
-                          ? "bg-teal-600 text-white rounded-tr-none" 
-                          : "bg-gray-100 text-gray-800 rounded-tl-none border border-gray-200"
-                      }`}>
+ msg.sender === "Kunth" 
+ ? "bg-teal-600 text-white rounded-tr-none" 
+ : "bg-gray-100 text-gray-800 rounded-tl-none border border-gray-200"
+ }`}>
                         <p>{msg.text}</p>
                       </div>
                     </div>
@@ -1310,7 +1310,7 @@ export default function PlannerPage() {
 
                   {aiStopSuggestions.length > 0 && (
                     <div className="space-y-1.5 mt-2 bg-teal-500/5 p-2 rounded-xl border border-teal-500/10 text-left">
-                      <span className="text-[9px] font-bold text-teal-750 dark:text-teal-400 uppercase tracking-wider block">AI Suggested Stops:</span>
+                      <span className="text-[9px] font-bold text-teal-750 uppercase tracking-wider block">AI Suggested Stops:</span>
                       <div className="flex flex-wrap gap-1">
                         {aiStopSuggestions.map((sug, i) => (
                           <button
@@ -1321,7 +1321,7 @@ export default function PlannerPage() {
                               setStopDesc(sug.description);
                               setStopTime(sug.time || "Morning");
                             }}
-                            className="px-2 py-1 rounded-lg border border-teal-500/20 bg-white hover:bg-teal-50/50 dark:bg-teal-950/20 text-[9px] text-teal-700 dark:text-teal-300 font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            className="px-2 py-1 rounded-lg border border-teal-500/20 bg-white hover:bg-teal-50/50 text-[9px] text-teal-700 font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
                           >
                             📍 {sug.name}
                           </button>
@@ -1400,13 +1400,13 @@ export default function PlannerPage() {
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold hover:bg-gray-50 text-gray-400"
+                    className="px-4 py-2 rounded-xl text-xs font-semibold hover:bg-gray-50 text-gray-400 relative after:absolute after:inset-[-6px] after:rounded-xl after:content-['']"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 text-white hover:bg-teal-500 transition-colors"
+                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 text-white hover:bg-teal-500 transition-colors relative after:absolute after:inset-[-6px] after:rounded-xl after:content-['']"
                   >
                     Add Stop
                   </button>
@@ -1519,13 +1519,13 @@ export default function PlannerPage() {
                   <button
                     type="button"
                     onClick={() => setShowEditModal(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold hover:bg-gray-50 text-gray-400"
+                    className="px-4 py-2 rounded-xl text-xs font-semibold hover:bg-gray-50 text-gray-400 relative after:absolute after:inset-[-6px] after:rounded-xl after:content-['']"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 text-white hover:bg-teal-500 transition-colors"
+                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 text-white hover:bg-teal-500 transition-colors relative after:absolute after:inset-[-6px] after:rounded-xl after:content-['']"
                   >
                     Save Changes
                   </button>

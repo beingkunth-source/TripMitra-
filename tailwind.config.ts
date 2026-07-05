@@ -1,8 +1,6 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  // A3b: dark mode via class so ThemeProvider can drive it
-  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",

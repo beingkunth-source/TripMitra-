@@ -6,11 +6,9 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Home, Compass, Landmark, Sparkles, LogIn, LogOut, User, Mail, ShieldAlert, Bell, Settings, Globe, ChevronDown, BookOpen, Sun, Moon } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { useTheme } from "next-themes";
 
 export default function BottomDock() {
   const pathname = usePathname();
-  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -202,13 +200,13 @@ export default function BottomDock() {
 
   // Reusable panel render functions
   const renderNotificationsPanel = (isMobile: boolean) => (
-    <div className={`absolute ${isMobile ? "right-0 bottom-full mb-3" : "right-0 top-full mt-3"} w-80 rounded-2xl border border-gray-200 bg-[#FAF8F5]/95 dark:bg-[#0F2320]/95 dark:border-teal-400/15 backdrop-blur-md p-4 shadow-xl z-[999] text-left`}>
+    <div className={`absolute ${isMobile ? "right-0 bottom-full mb-3" : "right-0 top-full mt-3"} w-80 rounded-2xl border border-gray-200 bg-[#FAF8F5]/95 backdrop-blur-md p-4 shadow-xl z-[999] text-left`}>
       <div className="flex justify-between items-center mb-3">
-        <h4 className="text-[10px] font-extrabold text-[#221F1C] dark:text-teal-200 uppercase tracking-wider">Notifications</h4>
+        <h4 className="text-[10px] font-extrabold text-[#221F1C] uppercase tracking-wider">Notifications</h4>
         <button 
           type="button"
           onClick={handleMarkAllRead} 
-          className="text-[9px] text-teal-750 dark:text-teal-400 hover:text-teal-900 font-bold"
+          className="text-[9px] text-teal-750 hover:text-teal-900 font-bold"
         >
           Mark all read
         </button>
@@ -218,26 +216,26 @@ export default function BottomDock() {
           <div 
             key={n.id} 
             className={`p-2.5 rounded-xl border text-[11px] leading-relaxed transition-all ${
-              n.read 
-                ? "bg-white/50 border-gray-200/50 text-[#666059] dark:bg-teal-950/20 dark:border-teal-400/10 dark:text-gray-400" 
-                : "bg-teal-500/5 border-teal-500/10 text-slate-900 dark:text-gray-100 font-medium"
-            }`}
+ n.read 
+ ? "bg-white/50 border-gray-200/50 text-[#666059] " 
+ : "bg-teal-500/5 border-teal-500/10 text-slate-900 font-medium"
+ }`}
           >
-            <p className="text-slate-800 dark:text-teal-100">{n.text}</p>
-            <span className="text-[9px] text-gray-400 dark:text-teal-400/50 block mt-1">{n.time}</span>
+            <p className="text-slate-800 ">{n.text}</p>
+            <span className="text-[9px] text-gray-400 block mt-1">{n.time}</span>
           </div>
         ))}
         {notifications.length === 0 && (
-          <p className="text-[10px] text-gray-400 dark:text-teal-505 italic text-center py-4">No notifications yet.</p>
+          <p className="text-[10px] text-gray-400 italic text-center py-4">No notifications yet.</p>
         )}
       </div>
     </div>
   );
 
   const renderSettingsPanel = (isMobile: boolean) => (
-    <div className={`absolute ${isMobile ? "right-0 bottom-full mb-3" : "right-0 top-full mt-3"} w-80 rounded-2xl border border-gray-200 bg-[#FAF8F5]/95 dark:bg-[#0F2320]/95 dark:border-teal-400/15 backdrop-blur-md p-5 shadow-xl z-[999] text-left`}>
+    <div className={`absolute ${isMobile ? "right-0 bottom-full mb-3" : "right-0 top-full mt-3"} w-80 rounded-2xl border border-gray-200 bg-[#FAF8F5]/95 backdrop-blur-md p-5 shadow-xl z-[999] text-left`}>
       <div className="flex justify-between items-center mb-4">
-        <h4 className="text-[11px] font-extrabold text-[#221F1C] dark:text-teal-200 uppercase tracking-wider">Workspace Settings</h4>
+        <h4 className="text-[11px] font-extrabold text-[#221F1C] uppercase tracking-wider">Workspace Settings</h4>
         {isMobile && (
           <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-650 text-xs">✕</button>
         )}
@@ -245,13 +243,13 @@ export default function BottomDock() {
       
       <div className="space-y-4">
         <div>
-          <label className="block text-[10px] font-bold text-slate-700 dark:text-teal-450/70 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Preferred Currency
           </label>
           <select 
             value={currencyPref}
             onChange={(e) => setCurrencyPref(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-teal-500/20 bg-white dark:bg-teal-950 text-xs focus:border-teal-500 outline-none text-slate-800 dark:text-teal-100"
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-xs focus:border-teal-500 outline-none text-slate-800 "
           >
             <option value="INR">INR (₹) - Indian Rupee</option>
             <option value="USD">USD ($) - US Dollar</option>
@@ -262,37 +260,37 @@ export default function BottomDock() {
         </div>
 
         <div>
-          <label className="block text-[10px] font-bold text-slate-700 dark:text-teal-450/70 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Collaboration Mode
           </label>
-          <div className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-teal-950/40 border border-gray-150 dark:border-teal-500/10">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-gray-150 ">
             <div>
-              <p className="text-xs font-semibold text-[#221F1C] dark:text-teal-100">Real-time Syncing</p>
-              <p className="text-[9px] text-[#666059] dark:text-teal-400/60">Auto-sync changes with collaborators</p>
+              <p className="text-xs font-semibold text-[#221F1C] ">Real-time Syncing</p>
+              <p className="text-[9px] text-[#666059] ">Auto-sync changes with collaborators</p>
             </div>
             <input 
               type="checkbox" 
               checked={realTimeSync}
               onChange={(e) => setRealTimeSync(e.target.checked)}
-              className="w-4 h-4 text-teal-600 border-gray-300 dark:border-teal-500/30 rounded focus:ring-teal-500 dark:bg-teal-950" 
+              className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500 " 
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[10px] font-bold text-slate-700 dark:text-teal-450/70 uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Offline Storage
           </label>
-          <div className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-teal-950/40 border border-gray-150 dark:border-teal-500/10">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/60 border border-gray-150 ">
             <div>
-              <p className="text-xs font-semibold text-[#221F1C] dark:text-teal-100">LocalStorage Fallback</p>
-              <p className="text-[9px] text-[#666059] dark:text-teal-400/60">Persist changes locally when offline</p>
+              <p className="text-xs font-semibold text-[#221F1C] ">LocalStorage Fallback</p>
+              <p className="text-[9px] text-[#666059] ">Persist changes locally when offline</p>
             </div>
             <input 
               type="checkbox" 
               checked={offlineStorage}
               onChange={(e) => setOfflineStorage(e.target.checked)}
-              className="w-4 h-4 text-teal-600 border-gray-300 dark:border-teal-500/30 rounded focus:ring-teal-500 dark:bg-teal-950" 
+              className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500 " 
             />
           </div>
         </div>
@@ -415,14 +413,14 @@ export default function BottomDock() {
       {/* RESPONSIVE LAYOUT CONTAINER */}
       {/* Mobile: Floating Bottom Glass Panel, Desktop: Top Static Header Navbar */}
       <div className="fixed z-[100] 
-        bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-lg
-        md:bottom-auto md:top-0 md:left-0 md:translate-x-0 md:w-full md:max-w-none 
-        transition-all duration-300">
+ bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-lg
+ md:bottom-auto md:top-0 md:left-0 md:translate-x-0 md:w-full md:max-w-none 
+ transition-all duration-300">
         
         {/* INNER CONTAINER */}
         <nav className="flex items-center justify-between px-5 py-2.5 rounded-full glass-panel glass-panel-glow !overflow-visible border-gray-200/50 bg-[#FAF8F5]/80 shadow-xl backdrop-blur-xl
-          dark:bg-[#0F2320]/90 dark:border-teal-400/15
-          md:rounded-none md:border-b md:border-slate-200/20 md:dark:border-teal-400/10 md:px-10 md:h-[84px] md:shadow-[0_4px_20px_rgba(0,0,0,0.03)] md:bg-white/80 md:dark:bg-[#0F2320]/95 md:backdrop-blur-[16px]">
+ 
+ md:rounded-none md:border-b md:border-slate-200/20 md: md:px-10 md:h-[84px] md:shadow-[0_4px_20px_rgba(0,0,0,0.03)] md:bg-white/80 md: md:backdrop-blur-[16px]">
           
           {/* LOGO SECTION - Left aligned on desktop */}
           <Link href="/" className="flex items-center gap-2.5 hover:-translate-y-0.5 transition-transform duration-200">
@@ -433,7 +431,7 @@ export default function BottomDock() {
             >
               <Sparkles className="w-7 h-7" />
             </motion.div>
-            <span className="hidden sm:inline-block font-display text-teal-950 dark:text-teal-200 font-extrabold text-xl md:text-[22px] tracking-tight">
+            <span className="hidden sm:inline-block font-display text-teal-950 font-extrabold text-xl md:text-[22px] tracking-tight">
               TripMitra
             </span>
           </Link>
@@ -448,13 +446,13 @@ export default function BottomDock() {
                 <motion.button
                   whileHover={isClickable ? { scale: 1.02, y: -2 } : {}}
                   whileTap={isClickable ? { scale: 0.98 } : {}}
-                  className={`relative group flex items-center gap-2 px-3.5 py-2 rounded-full text-xs md:text-[15px] font-semibold tracking-wide transition-all duration-200 ${
-                    item.active
-                      ? "text-teal-950 font-bold"
-                      : isClickable
-                      ? "text-slate-700 hover:text-slate-950 hover:bg-slate-500/5"
-                      : "text-slate-400 cursor-not-allowed"
-                  }`}
+                  className={`relative group flex items-center gap-2 px-3.5 py-3 md:py-2 rounded-full text-xs md:text-[15px] font-semibold tracking-wide transition-all duration-200 ${
+ item.active
+ ? "text-teal-950 font-bold"
+ : isClickable
+ ? "text-slate-700 hover:text-slate-950 hover:bg-slate-500/5"
+ : "text-slate-400 cursor-not-allowed"
+ }`}
                   disabled={item.disabled}
                   title={item.disabled ? "Select or create a trip to unlock" : ""}
                 >
@@ -466,12 +464,12 @@ export default function BottomDock() {
                     />
                   )}
                   <Icon className={`w-5 h-5 transition-transform duration-200 ${
-                    item.active 
-                      ? "text-teal-700" 
-                      : isClickable 
-                      ? "text-slate-500 group-hover:text-slate-900 group-hover:rotate-6" 
-                      : "text-slate-300"
-                  }`} />
+ item.active 
+ ? "text-teal-700" 
+ : isClickable 
+ ? "text-slate-500 group-hover:text-slate-900 group-hover:rotate-6" 
+ : "text-slate-300"
+ }`} />
                   <span className="hidden sm:inline relative z-10">{item.name}</span>
                 </motion.button>
               );
@@ -492,7 +490,7 @@ export default function BottomDock() {
           <div className="flex items-center gap-3.5 relative">
             
             {/* Merged Utility Pill [ 🔔 ] [ ⚙️ ] (Desktop only) */}
-            <div className="hidden md:flex items-center gap-1 bg-slate-100/90 border border-slate-200/50 p-1 rounded-full shadow-sm hover:shadow transition-shadow duration-200 dark:bg-teal-950/45 dark:border-teal-400/15">
+            <div className="hidden md:flex items-center gap-1 bg-slate-100/90 border border-slate-200/50 p-1 rounded-full shadow-sm hover:shadow transition-shadow duration-200 ">
               {/* Notifications Bell */}
               <div className="relative" ref={notificationsRef}>
                 <button
@@ -504,15 +502,15 @@ export default function BottomDock() {
                     setShowProfileDropdown(false);
                   }}
                   className={`p-2 rounded-full transition-all duration-200 relative hover:scale-105 active:scale-95 ${
-                    showNotifications 
-                      ? "bg-white text-teal-700 shadow-sm dark:bg-teal-900 dark:text-teal-100" 
-                      : "text-slate-600 hover:text-slate-900 hover:bg-white/70 dark:text-teal-350 dark:hover:text-teal-100 dark:hover:bg-teal-900/40"
-                  }`}
+ showNotifications 
+ ? "bg-white text-teal-700 shadow-sm " 
+ : "text-slate-600 hover:text-slate-900 hover:bg-white/70 "
+ }`}
                   title="Notifications"
                 >
                   <Bell className="w-[18px] h-[18px]" />
                   {notifications.some(n => !n.read) && (
-                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-teal-950" />
+                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white " />
                   )}
                 </button>
                 <AnimatePresence>
@@ -524,20 +522,7 @@ export default function BottomDock() {
                 </AnimatePresence>
               </div>
 
-              {/* Dark Mode Toggle */}
-              <button
-                type="button"
-                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                className="p-2 rounded-full text-slate-600 hover:text-slate-900 hover:bg-white/70 dark:text-teal-355 dark:hover:text-teal-100 dark:hover:bg-teal-900/40 transition-all duration-200 hover:scale-105 active:scale-95"
-                title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                aria-label="Toggle dark mode"
-              >
-                {mounted && resolvedTheme === "dark" ? (
-                  <Sun className="w-[18px] h-[18px]" />
-                ) : (
-                  <Moon className="w-[18px] h-[18px]" />
-                )}
-              </button>
+
 
               {/* Settings Shortcut */}
               <div className="relative" ref={settingsRef}>
@@ -550,10 +535,10 @@ export default function BottomDock() {
                     setShowProfileDropdown(false);
                   }}
                   className={`p-2 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 ${
-                    showSettings 
-                      ? "bg-white text-teal-700 shadow-sm dark:bg-teal-900 dark:text-teal-100" 
-                      : "text-slate-600 hover:text-slate-900 hover:bg-white/70 dark:text-teal-350 dark:hover:text-teal-100 dark:hover:bg-teal-900/40"
-                  }`}
+ showSettings 
+ ? "bg-white text-teal-700 shadow-sm " 
+ : "text-slate-600 hover:text-slate-900 hover:bg-white/70 "
+ }`}
                   title="Workspace Settings"
                 >
                   <Settings className="w-[18px] h-[18px] hover:rotate-45 transition-transform duration-300" />
@@ -579,7 +564,7 @@ export default function BottomDock() {
                     setShowProfileDropdown(!showProfileDropdown);
                     setShowNotifications(false);
                   }}
-                  className="flex items-center gap-2 bg-slate-100/90 border border-slate-200/50 p-1 px-3 rounded-full hover:bg-slate-200/55 transition-all duration-200 cursor-pointer shadow-sm hover:shadow active:scale-[0.98] dark:bg-teal-950/40 dark:border-teal-400/15"
+                  className="flex items-center gap-2 bg-slate-100/90 border border-slate-200/50 py-2 px-3 md:py-1 md:px-3 rounded-full hover:bg-slate-200/55 transition-all duration-200 cursor-pointer shadow-sm hover:shadow active:scale-[0.98] "
                 >
                   {user ? (
                     <img
@@ -588,15 +573,15 @@ export default function BottomDock() {
                       className="w-7 h-7 rounded-full border border-teal-500/25 object-cover"
                     />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-teal-900/40 text-slate-600 dark:text-teal-300 flex items-center justify-center text-xs font-black">
+                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-black">
                       G
                     </div>
                   )}
                   <div className="flex items-center gap-1">
-                    <span className="text-xs font-bold text-slate-800 dark:text-teal-200 leading-tight">
+                    <span className="text-xs font-bold text-slate-800 leading-tight">
                       {user ? (user.user_metadata?.full_name?.split(" ")[0] || user.email?.split("@")[0]) : "Guest"}
                     </span>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-teal-400" />
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500 " />
                   </div>
                 </div>
  
@@ -607,11 +592,11 @@ export default function BottomDock() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 bottom-full mb-3 md:bottom-auto md:top-full md:mt-3 w-52 rounded-2xl border border-gray-200 bg-[#FAF8F5]/95 dark:bg-[#0F2320]/95 dark:border-teal-400/15 backdrop-blur-md p-2 shadow-xl z-50 text-left flex flex-col"
+                      className="absolute right-0 bottom-full mb-3 md:bottom-auto md:top-full md:mt-3 w-52 rounded-2xl border border-gray-200 bg-[#FAF8F5]/95 backdrop-blur-md p-2 shadow-xl z-50 text-left flex flex-col"
                     >
-                      <div className="px-3 py-2 border-b border-gray-150 dark:border-teal-450/15 mb-1">
+                      <div className="px-3 py-2 border-b border-gray-150 mb-1">
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Account</p>
-                        <p className="text-xs font-bold text-slate-800 dark:text-teal-200 truncate">
+                        <p className="text-xs font-bold text-slate-800 truncate">
                           {user ? user.email : "Local Offline Mode"}
                         </p>
                       </div>
@@ -619,40 +604,21 @@ export default function BottomDock() {
                       <button 
                         type="button"
                         onClick={() => { setShowSettings(true); setShowProfileDropdown(false); }}
-                        className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-teal-300 hover:bg-slate-100 dark:hover:bg-teal-400/10 rounded-lg transition-colors flex items-center gap-2"
+                        className="w-full text-left px-3 py-3 md:py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-2"
                       >
                         <Settings className="w-3.5 h-3.5" />
                         Settings
                       </button>
 
                       {/* Mobile-only menu items */}
-                      <div className="md:hidden border-t border-gray-150 dark:border-teal-450/15 my-1 pt-1 space-y-0.5">
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setTheme(resolvedTheme === "dark" ? "light" : "dark");
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-teal-300 hover:bg-slate-100 dark:hover:bg-teal-400/10 rounded-lg transition-colors flex items-center gap-2"
-                        >
-                          {mounted && resolvedTheme === "dark" ? (
-                            <>
-                              <Sun className="w-3.5 h-3.5" />
-                              Light Mode
-                            </>
-                          ) : (
-                            <>
-                              <Moon className="w-3.5 h-3.5" />
-                              Dark Mode
-                            </>
-                          )}
-                        </button>
+                      <div className="md:hidden border-t border-gray-150 my-1 pt-1 space-y-0.5">
                         <button 
                           type="button"
                           onClick={() => {
                             setShowNotifications(true);
                             setShowProfileDropdown(false);
                           }}
-                          className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-teal-300 hover:bg-slate-100 dark:hover:bg-teal-400/10 rounded-lg transition-colors flex items-center gap-2 relative"
+                          className="w-full text-left px-3 py-3 md:py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-2 relative"
                         >
                           <Bell className="w-3.5 h-3.5" />
                           <span>Notifications</span>
@@ -666,7 +632,7 @@ export default function BottomDock() {
                         <button 
                           type="button"
                           onClick={() => { setShowAuthModal(true); setShowProfileDropdown(false); }}
-                          className="w-full text-left px-3 py-2 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:bg-teal-500/5 rounded-lg transition-colors flex items-center gap-2 border-t border-gray-150 dark:border-teal-450/15 mt-1 pt-2"
+                          className="w-full text-left px-3 py-3 md:py-2 text-xs font-semibold text-teal-600 hover:bg-teal-500/5 rounded-lg transition-colors flex items-center gap-2 border-t border-gray-150 mt-1 pt-2"
                         >
                           <LogIn className="w-3.5 h-3.5" />
                           Sign In / Sync
@@ -677,7 +643,7 @@ export default function BottomDock() {
                         <button 
                           type="button"
                           onClick={handleLogout}
-                          className="w-full text-left px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-2 border-t border-gray-150 dark:border-teal-450/15 mt-1 pt-2"
+                          className="w-full text-left px-3 py-3 md:py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-2 border-t border-gray-150 mt-1 pt-2"
                         >
                           <LogOut className="w-3.5 h-3.5" />
                           Sign Out
@@ -821,10 +787,10 @@ export default function BottomDock() {
               {authMsg && (
                 <div
                   className={`mt-4 p-3 rounded-xl border text-xs leading-relaxed ${
-                    authMsg.type === "success"
-                      ? "bg-green-500/10 border-green-500/20 text-green-800"
-                      : "bg-red-500/10 border-red-500/20 text-red-800"
-                  }`}
+ authMsg.type === "success"
+ ? "bg-green-500/10 border-green-500/20 text-green-800"
+ : "bg-red-500/10 border-red-500/20 text-red-800"
+ }`}
                 >
                   {authMsg.text}
                 </div>

@@ -34,25 +34,7 @@
   --shadow-glow: 0 0 24px rgba(15, 110, 86, 0.12);
 }
 
-/* A3c: Dark mode overrides */
-.dark {
-  --bg-primary:   #0B1A17;
-  --bg-secondary: #0F2320;
-  --bg-tertiary:  #132B2A;
 
-  --foreground:       #E8F5F0;
-  --foreground-muted: #8FB8AD;
-
-  --color-primary: 29, 158, 117;   /* teal-400 #1D9E75 */
-  --color-accent:  249, 115, 98;   /* coral-500 */
-
-  --glass-bg:        rgba(19, 43, 42, 0.88);
-  --glass-border:    rgba(29, 158, 117, 0.15);
-  --glass-highlight: rgba(255, 255, 255, 0.04);
-
-  --shadow-soft: 0 10px 35px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0,0,0,0.25);
-  --shadow-glow: 0 0 24px rgba(29, 158, 117, 0.18);
-}
 
 body {
   color: var(--foreground);
@@ -119,20 +101,7 @@ h1, h2, h3, h4, h5, h6 {
   outline: none;
 }
 
-/* Dark-mode glass overrides */
-.dark .glass-panel {
-  background: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 100%), var(--glass-bg);
-  border-color: var(--glass-border);
-}
-.dark .glass-input {
-  background: rgba(19, 43, 42, 0.7);
-  border-color: rgba(29, 158, 117, 0.18);
-  color: var(--foreground);
-}
-.dark .glass-input:focus {
-  border-color: rgba(29, 158, 117, 0.55);
-  box-shadow: 0 0 0 3px rgba(29, 158, 117, 0.12);
-}
+
 
 .glass-btn {
   background: rgba(255, 255, 255, 0.7);
@@ -315,16 +284,7 @@ h1, h2, h3, h4, h5, h6 {
   animation: drift-c 30s ease-in-out infinite;
 }
 
-/* Dark mode: slightly brighter blobs so they read through darker glass */
-.dark .animated-bg span:nth-child(1) {
-  background: radial-gradient(circle, rgba(58, 150, 135, 0.55), transparent 70%);
-}
-.dark .animated-bg span:nth-child(2) {
-  background: radial-gradient(circle, rgba(76, 122, 191, 0.50), transparent 70%);
-}
-.dark .animated-bg span:nth-child(3) {
-  background: radial-gradient(circle, rgba(199, 102, 140, 0.40), transparent 70%);
-}
+
 
 @media (prefers-reduced-motion: reduce) {
   .animated-bg span {

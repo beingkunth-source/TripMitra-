@@ -417,7 +417,8 @@ export default function HomePage() {
                     </>
                   ) : (
                     <>
-                      <span>Start Planning Free</span>
+                      <span className="hidden sm:inline">Start Planning Free</span>
+                      <span className="sm:hidden">Plan</span>
                       <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                     </>
                   )}

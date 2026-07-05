@@ -203,8 +203,8 @@ export default function SharePage() {
             key={tab}
             onClick={() => setActiveTab(tab as any)}
             className={`flex-1 py-2 rounded-lg text-center transition-all uppercase tracking-wider text-[10px] ${
-              activeTab === tab ? "bg-white text-teal-700 shadow" : "text-gray-400"
-            }`}
+ activeTab === tab ? "bg-white text-teal-700 shadow" : "text-gray-400"
+ }`}
           >
             {tab}
           </button>
@@ -223,10 +223,10 @@ export default function SharePage() {
                 key={day.dayNumber}
                 onClick={() => setActiveDay(day.dayNumber)}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                  activeDay === day.dayNumber 
-                    ? "border-teal-500 bg-teal-500/5 shadow-sm" 
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
+ activeDay === day.dayNumber 
+ ? "border-teal-500 bg-teal-500/5 shadow-sm" 
+ : "border-gray-200 bg-white hover:border-gray-300"
+ }`}
               >
                 <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800">Day {day.dayNumber}</h3>
                 <p className="text-[11px] text-gray-500 mt-0.5 font-medium">{day.theme || "Sightseeing Exploration"}</p>

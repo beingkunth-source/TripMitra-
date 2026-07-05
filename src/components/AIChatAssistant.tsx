@@ -134,10 +134,10 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
             >
               <div
                 className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed border ${
-                  msg.role === "user"
-                    ? "bg-teal-600 border-teal-700 text-white rounded-tr-none"
-                    : "bg-gray-100 border-gray-200 text-gray-800 rounded-tl-none dark:bg-teal-900/40 dark:border-teal-400/15 dark:text-gray-100"
-                }`}
+ msg.role === "user"
+ ? "bg-teal-600 border-teal-700 text-white rounded-tr-none"
+ : "bg-gray-100 border-gray-200 text-gray-800 rounded-tl-none "
+ }`}
               >
                 {formatText(msg.content)}
               </div>
@@ -169,7 +169,7 @@ export default function AIChatAssistant({ destination, startDate, travelers }: A
           <button
             key={i}
             onClick={() => handleSend(sug)}
-            className="px-2.5 py-1 rounded-full text-[10px] font-medium border border-gray-200 bg-white text-gray-600 hover:text-teal-600 hover:border-teal-500/30 hover:bg-teal-500/5 transition-all duration-200 dark:bg-teal-900/20 dark:border-teal-400/15 dark:text-gray-300 dark:hover:text-teal-300"
+            className="px-2.5 py-1 rounded-full text-[10px] font-medium border border-gray-200 bg-white text-gray-600 hover:text-teal-600 hover:border-teal-500/30 hover:bg-teal-500/5 transition-all duration-200 "
           >
             {sug}
           </button>

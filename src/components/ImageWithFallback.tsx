@@ -73,8 +73,8 @@ export default function ImageWithFallback({
           onLoad={handleLoad}
           onError={handleError}
           className={`transition-all duration-500 ease-in-out ${
-            loading ? "scale-95 blur-sm opacity-60" : "scale-100 blur-0 opacity-100"
-          } ${className}`}
+ loading ? "scale-95 blur-sm opacity-60" : "scale-100 blur-0 opacity-100"
+ } ${className}`}
           {...props}
         />
       )}

@@ -236,26 +236,26 @@ export default function Map({ activities, destination, centerCoords, isGeocoding
 
       {/* Geocoding skeleton loader overlay */}
       {isGeocoding && (
-        <div className="absolute inset-0 z-[500] bg-gray-50/90 dark:bg-[#0B1A17]/95 backdrop-blur-sm animate-pulse flex flex-col items-center justify-center text-center p-6 select-none">
+        <div className="absolute inset-0 z-[500] bg-gray-50/90 backdrop-blur-sm animate-pulse flex flex-col items-center justify-center text-center p-6 select-none">
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full border-2 border-dashed border-teal-500/35 flex items-center justify-center animate-spin bg-teal-500/5">
-              <MapPin className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              <MapPin className="w-5 h-5 text-teal-600 " />
             </div>
-            <p className="text-sm font-extrabold text-slate-800 dark:text-teal-150 animate-bounce">Geocoding route stops...</p>
-            <p className="text-xs text-slate-450 dark:text-teal-400/60 mt-0.5">Resolving activity stop coordinates</p>
+            <p className="text-sm font-extrabold text-slate-800 animate-bounce">Geocoding route stops...</p>
+            <p className="text-xs text-slate-450 mt-0.5">Resolving activity stop coordinates</p>
           </div>
         </div>
       )}
 
       {/* No locations overlay placeholder */}
       {!isGeocoding && activities.filter(act => typeof act.lat === "number" && typeof act.lng === "number").length === 0 && (
-        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-gray-50/90 dark:bg-[#0B1A17]/95 backdrop-blur-sm p-6 text-center select-none">
-          <div className="w-full max-w-sm py-8 px-6 rounded-2xl border-2 border-dashed border-teal-500/20 bg-white/40 dark:bg-teal-950/10 flex flex-col items-center shadow-sm">
+        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-gray-50/90 backdrop-blur-sm p-6 text-center select-none">
+          <div className="w-full max-w-sm py-8 px-6 rounded-2xl border-2 border-dashed border-teal-500/20 bg-white/40 flex flex-col items-center shadow-sm">
             <div className="w-12 h-12 rounded-full border-2 border-dashed border-teal-500/30 flex items-center justify-center mb-3 bg-teal-500/5">
-              <MapPin className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              <MapPin className="w-5 h-5 text-teal-600 " />
             </div>
-            <p className="text-sm font-extrabold text-slate-800 dark:text-teal-150">No locations to display</p>
-            <p className="text-[11px] text-slate-450 dark:text-teal-400/60 mt-1 max-w-[240px] leading-relaxed">
+            <p className="text-sm font-extrabold text-slate-800 ">No locations to display</p>
+            <p className="text-[11px] text-slate-450 mt-1 max-w-[240px] leading-relaxed">
               Add stops with valid coordinates to view them on the route planner map.
             </p>
           </div>
@@ -285,10 +285,10 @@ export default function Map({ activities, destination, centerCoords, isGeocoding
             type="button"
             onClick={() => setMapLayer(layer.id)}
             className={`px-2 py-1 rounded-lg text-[10px] font-bold tracking-wide transition-all ${
-              mapLayer === layer.id
-                ? "bg-teal-600 text-white shadow-sm"
-                : "text-slate-600 hover:text-slate-800 hover:bg-gray-100"
-            }`}
+ mapLayer === layer.id
+ ? "bg-teal-600 text-white shadow-sm"
+ : "text-slate-600 hover:text-slate-800 hover:bg-gray-100"
+ }`}
           >
             {layer.label}
           </button>
