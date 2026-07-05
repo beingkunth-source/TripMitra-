@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { 
-  Search, Mic, MicOff, History, Trash2, Calendar, Users, 
+  Search, History, Trash2, Calendar, Users, 
   Globe, Star, Compass, ArrowRight, Sparkles, Navigation, 
   CloudSun, Landmark, Heart, Smile, Brain, Plane, Hotel, Coins 
 } from "lucide-react";
@@ -404,18 +404,6 @@ export default function HomePage() {
                   required
                 />
                 
-                <button
-                  type="button"
-                  onClick={handleVoiceSearch}
-                  className={`p-2 rounded-xl transition-colors duration-250 flex-shrink-0 ${
-                    isRecording 
-                      ? "bg-red-500/10 text-red-600 border border-red-500/20" 
-                      : "hover:bg-gray-100 text-slate-500 hover:text-slate-700"
-                  }`}
-                  title="Search by Voice"
-                >
-                  {isRecording ? <Mic className="w-3.5 h-3.5 animate-ping" /> : <MicOff className="w-3.5 h-3.5" />}
-                </button>
 
                 <button
                   type="submit"

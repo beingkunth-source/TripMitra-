@@ -877,50 +877,6 @@ export default function BudgetPage() {
 
       </div>
 
-      {/* Floating budget badge, top-right corner */}
-      <div className="fixed top-20 right-6 z-50">
-        <motion.button
-          onClick={() => setShowBadgeDetail(!showBadgeDetail)}
-          whileTap={{ scale: 0.95 }}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg border backdrop-blur-md font-bold text-xs cursor-pointer ${
-            isOverBudget
-              ? "bg-pink-600/95 border-pink-700 text-white"
-              : "bg-teal-650/95 border-teal-700 text-white"
-          }`}
-        >
-          <Landmark className="w-3.5 h-3.5" />
-          <span>₹{remaining.toLocaleString("en-IN")}</span>
-        </motion.button>
-
-        <AnimatePresence>
-          {showBadgeDetail && (
-            <motion.div
-              initial={{ opacity: 0, y: -8, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.95 }}
-              className="absolute top-12 right-0 w-64 p-4 rounded-2xl glass-panel border-gray-200 dark:border-teal-500/25 bg-white dark:bg-teal-950/95 shadow-xl text-left"
-            >
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-gray-500 dark:text-teal-400 font-semibold">Budget limit</span>
-                <span className="font-bold text-gray-850 dark:text-white">₹{trip.budgetLimit.toLocaleString("en-IN")}</span>
-              </div>
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-gray-500 dark:text-teal-400 font-semibold">Spent</span>
-                <span className="font-bold text-gray-850 dark:text-white">₹{totalSpent.toLocaleString("en-IN")}</span>
-              </div>
-              <div className="h-px bg-gray-150 dark:bg-teal-500/10 my-2" />
-              <div className="flex justify-between text-xs">
-                <span className={`font-semibold ${isOverBudget ? "text-pink-600" : "text-emerald-600 dark:text-emerald-400"}`}>
-                  {isOverBudget ? "Over budget" : "Remaining"}
-                </span>
-                <span className={`font-extrabold ${isOverBudget ? "text-pink-600" : "text-emerald-600 dark:text-emerald-400"}`}>
-                  ₹{Math.abs(remaining).toLocaleString("en-IN")}
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
 
     </div>
   );
