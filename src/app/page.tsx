@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { 
   Search, Mic, MicOff, History, Trash2, Calendar, Users, 
   Globe, Star, Compass, ArrowRight, Sparkles, Navigation, 
@@ -14,6 +14,7 @@ import {
 } from "@/lib/store";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import ImageWithFallback from "@/components/ImageWithFallback";
+import ScrollReveal from "@/components/ScrollReveal";
 
 const getFlagEmoji = (dest: string) => {
   const d = dest.toLowerCase();
@@ -31,6 +32,11 @@ const getFlagEmoji = (dest: string) => {
 export default function HomePage() {
   const router = useRouter();
   
+  // Parallax hook
+  const { scrollY } = useScroll();
+  const heroY = useTransform(scrollY, [0, 400], [0, 80]);
+  const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.3]);
+
   // Form State
   const [destination, setDestination] = useState("");
   const [originCity, setOriginCity] = useState("");
@@ -62,7 +68,7 @@ export default function HomePage() {
       setCurrentPlaceholderIdx((prev) => (prev + 1) % placeholderSuggestions.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [placeholderSuggestions.length]);
 
   // Load Saved data and Auth Session
   useEffect(() => {
@@ -324,7 +330,6 @@ export default function HomePage() {
     { city: "Varanasi",  emoji: "🪔", desc: "Spiritual river ghat ceremonies",    country: "India",     image: "https://images.unsplash.com/photo-1561361513-2d000a50f0db?auto=format&fit=crop&w=600&q=80", span: "md:col-span-1 md:row-span-1" },
   ];
 
-
   return (
     <div className="relative w-full max-w-[1400px] mx-auto px-4 md:px-8 pt-16 md:pt-24 pb-20 text-[#221F1C]">
       
@@ -343,7 +348,7 @@ export default function HomePage() {
       </svg>
 
       {/* 1. HERO SECTION (2-COLUMN GRID) */}
-      <section className="relative min-h-[60vh] py-8 md:py-14 flex flex-col lg:grid lg:grid-cols-12 gap-10 lg:gap-20 items-center text-left">
+      <motion.section style={{ y: heroY, opacity: heroOpacity }} className="relative min-h-[60vh] py-8 md:py-14 flex flex-col lg:grid lg:grid-cols-12 gap-10 lg:gap-20 items-center text-left">
         
         {/* Left Column: Headline, Description, Search, Indicators */}
         <div className="lg:col-span-7 flex flex-col items-start w-full pr-0 lg:pr-6">
@@ -565,7 +570,7 @@ export default function HomePage() {
           <div className="absolute bottom-10 right-4 text-2xl animate-float-pin opacity-70" style={{ animationDelay: "1.5s" }}>📍</div>
           <div className="absolute top-1/2 -right-8 text-2xl animate-float-pin opacity-60" style={{ animationDelay: "3s" }}>📍</div>
 
-          {/* Main Mockup Card (Enlarged by ~20% to max-w-[480px]) */}
+          {/* Main Mockup Card */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -661,7 +666,7 @@ export default function HomePage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-black text-emerald-600">₹18,200/n</p>
-                  <p className="text-[9px] text-teal-750 font-bold mt-1 uppercase tracking-wider">Saved to Deck</p>
+                  <p className="text-[9px] text-teal-755 font-bold mt-1 uppercase tracking-wider">Saved to Deck</p>
                 </div>
               </motion.div>
 
@@ -686,7 +691,7 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-[radial-gradient(#0f766e_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
           </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* FEATURE HIGHLIGHT CARDS */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20 text-left">
@@ -729,226 +734,218 @@ export default function HomePage() {
           }[feat.color as "teal" | "coral" | "emerald" | "amber"];
 
           return (
-            <motion.div
-              key={idx}
-              whileHover={{ y: -8, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="p-7 min-h-[245px] rounded-2xl border border-slate-200 bg-white/90 shadow-md hover:shadow-xl hover:border-teal-500/25 transition-all duration-300 cursor-pointer flex flex-col justify-between"
-            >
-              <div>
-                <div className={`w-12 h-12 rounded-2xl ${bgColors} border flex items-center justify-center mb-5 shadow-sm`}>
-                  <Icon className="w-6 h-6" />
+            <ScrollReveal key={idx} delay={idx * 0.08} direction="up">
+              <motion.div
+                whileHover={{ y: -8, scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="p-7 min-h-[245px] rounded-2xl border border-slate-200 bg-white/90 shadow-md hover:shadow-xl hover:border-teal-500/25 transition-all duration-300 cursor-pointer flex flex-col justify-between h-full"
+              >
+                <div>
+                  <div className={`w-12 h-12 rounded-2xl ${bgColors} border flex items-center justify-center mb-5 shadow-sm`}>
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base md:text-lg font-extrabold text-slate-900 font-display tracking-tight mb-2 flex items-center gap-1.5">
+                    <span>{feat.emoji}</span>
+                    <span>{feat.title}</span>
+                  </h3>
+                  <p className="text-xs md:text-[13px] text-slate-600 leading-relaxed font-medium">
+                    {feat.desc}
+                  </p>
                 </div>
-                <h3 className="text-base md:text-lg font-extrabold text-slate-900 font-display tracking-tight mb-2 flex items-center gap-1.5">
-                  <span>{feat.emoji}</span>
-                  <span>{feat.title}</span>
-                </h3>
-                <p className="text-xs md:text-[13px] text-slate-600 leading-relaxed font-medium">
-                  {feat.desc}
-                </p>
-              </div>
-            </motion.div>
+              </motion.div>
+            </ScrollReveal>
           );
         })}
       </section>
 
       {/* 2. DESTINATIONS GRID */}
-      <section className="mb-16">
-        <div className="mb-6 text-left">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#666059] block mb-1">Top Picks Worldwide</span>
-          <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C] flex items-center gap-2">
-            <Compass className="w-5 h-5 text-teal-600" />
-            Popular Destinations
-          </h2>
-          <p className="text-xs text-[#666059] mt-0.5">Tap any destination to instantly pre-fill the trip planner</p>
-        </div>
+      <ScrollReveal>
+        <section className="mb-16">
+          <div className="mb-6 text-left">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#666059] block mb-1">Top Picks Worldwide</span>
+            <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C] flex items-center gap-2">
+              <Compass className="w-5 h-5 text-teal-600" />
+              Popular Destinations
+            </h2>
+            <p className="text-xs text-[#666059] mt-0.5">Tap any destination to instantly pre-fill the trip planner</p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5 auto-rows-[165px]">
-          {allDestinations.map((dest, idx) => (
-            <motion.div
-              key={idx}
-              whileHover={{ y: -6, scale: 1.01 }}
-              onClick={() => handleInterestSelect(dest.city)}
-              className={`group overflow-hidden rounded-card-ds border border-slate-200 bg-white shadow-card-ds hover:shadow-elevated-ds transition-all duration-300 cursor-pointer flex flex-col text-left h-full ${dest.span}`}
-            >
-              <div className="relative w-full flex-grow overflow-hidden min-h-[110px]">
-                <ImageWithFallback
-                  src={dest.image}
-                  alt={dest.city}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 400px"
-                  fallbackText={dest.city}
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <span className="absolute top-2.5 left-2.5 text-xs bg-white/95 px-2.5 py-0.5 rounded-full shadow-sm font-extrabold text-slate-800 flex items-center gap-1">
-                  <span>{dest.emoji}</span>
-                  <span>{dest.city}</span>
-                </span>
-              </div>
-              <div className="p-4 flex flex-col justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5 auto-rows-[165px]">
+            {allDestinations.map((dest, idx) => (
+              <ScrollReveal key={idx} delay={idx * 0.08} direction="right">
+                <motion.div
+                  whileHover={{ y: -6, scale: 1.01 }}
+                  onClick={() => handleInterestSelect(dest.city)}
+                  className={`group overflow-hidden rounded-card-ds border border-slate-200 bg-white shadow-card-ds hover:shadow-elevated-ds transition-all duration-300 cursor-pointer flex flex-col text-left h-full ${dest.span}`}
+                >
+                  <div className="relative w-full flex-grow overflow-hidden min-h-[110px]">
+                    <ImageWithFallback
+                      src={dest.image}
+                      alt={dest.city}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 400px"
+                      fallbackText={dest.city}
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <span className="absolute top-2.5 left-2.5 text-xs bg-white/95 px-2.5 py-0.5 rounded-full shadow-sm font-extrabold text-slate-800 flex items-center gap-1">
+                      <span>{dest.emoji}</span>
+                      <span>{dest.city}</span>
+                    </span>
+                  </div>
+                  <div className="p-4 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-teal-850">{dest.country}</h3>
+                      <p className="text-[11px] text-slate-600 leading-relaxed font-semibold mt-0.5 truncate">{dest.desc}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-teal-700 mt-2 group-hover:text-teal-900 transition-colors">
+                      <span>Plan trip</span>
+                      <ArrowRight className="w-3 h-3 transform group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+                </motion.div>
+              </ScrollReveal>
+            ))}
+
+            {/* AI prompt CTA tile */}
+            <ScrollReveal delay={allDestinations.length * 0.08} direction="right">
+              <motion.div
+                whileHover={{ y: -6, scale: 1.01 }}
+                onClick={() => { setDestination(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className="group overflow-hidden rounded-card-ds border border-teal-200/50 bg-gradient-to-br from-teal-950 to-teal-800 p-5 shadow-card-ds hover:shadow-elevated-ds transition-all duration-300 cursor-pointer flex flex-col justify-between text-left md:col-span-1 md:row-span-1 h-full"
+              >
                 <div>
-                  <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-teal-850">{dest.country}</h3>
-                  <p className="text-[11px] text-slate-600 leading-relaxed font-semibold mt-0.5 truncate">{dest.desc}</p>
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-teal-400 bg-teal-400/10 px-2 py-0.5 rounded-full">AI Planner</span>
+                  <h3 className="text-sm font-bold font-display text-white mt-2.5 leading-snug">Suggest another hotspot?</h3>
+                  <p className="text-[10px] text-slate-300 mt-1 leading-normal font-medium">Type any destination in the copilot search box.</p>
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-teal-700 mt-2 group-hover:text-teal-900 transition-colors">
-                  <span>Plan trip</span>
-                  <ArrowRight className="w-3 h-3 transform group-hover:translate-x-0.5 transition-transform" />
+                <div className="flex items-center gap-1 text-[10px] font-extrabold text-teal-400 mt-2">
+                  <span>Try prompts free</span>
+                  <Sparkles className="w-3 h-3 text-teal-400 animate-pulse" />
                 </div>
-              </div>
-            </motion.div>
-          ))}
-
-          {/* AI prompt CTA tile */}
-          <motion.div
-            whileHover={{ y: -6, scale: 1.01 }}
-            onClick={() => { setDestination(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            className="group overflow-hidden rounded-card-ds border border-teal-200/50 bg-gradient-to-br from-teal-950 to-teal-800 p-5 shadow-card-ds hover:shadow-elevated-ds transition-all duration-300 cursor-pointer flex flex-col justify-between text-left md:col-span-1 md:row-span-1 h-full"
-          >
-            <div>
-              <span className="text-[9px] font-extrabold uppercase tracking-widest text-teal-400 bg-teal-400/10 px-2 py-0.5 rounded-full">AI Planner</span>
-              <h3 className="text-sm font-bold font-display text-white mt-2.5 leading-snug">Suggest another hotspot?</h3>
-              <p className="text-[10px] text-slate-300 mt-1 leading-normal font-medium">Type any destination in the copilot search box.</p>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] font-extrabold text-teal-400 mt-2">
-              <span>Try prompts free</span>
-              <Sparkles className="w-3 h-3 text-teal-400 animate-pulse" />
-            </div>
-          </motion.div>
-        </div>
-      </section>
+              </motion.div>
+            </ScrollReveal>
+          </div>
+        </section>
+      </ScrollReveal>
 
       {/* 3. SAVED / SYNCED CLOUD ITINERARIES LIST */}
       {savedTrips.length > 0 && (
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C] flex items-center gap-2">
-              <Globe className="w-5 h-5 text-[#4C7ABF]" />
-              {user ? "Cloud Workspace Trips" : "Local Saved Itineraries"}
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-            {savedTrips.map((trip) => {
-              const attractionsCount = (trip.itinerary && trip.itinerary.length > 0) 
-                ? trip.itinerary.reduce((sum: number, d: any) => sum + (d.activities?.length || 0), 0) 
-                : 3;
-              
-              return (
-                <div
-                  key={trip.id}
-                  onClick={() => router.push(`/planner/${trip.id}`)}
-                  className="group p-5 rounded-card-ds border border-slate-200/60 bg-white shadow-card-ds hover:shadow-elevated-ds hover:border-teal-500/20 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[175px] text-left"
-                >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-teal-700 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/15">
-                        {trip.days} Days
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/compare?a=${trip.id}`);
-                          }}
-                          className="text-[9px] font-extrabold text-indigo-700 bg-indigo-500/10 hover:bg-indigo-500/25 border border-indigo-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider transition-colors cursor-pointer"
-                          title="Compare destinations"
-                        >
-                          Compare
-                        </button>
-                        <span className="text-[9px] font-extrabold text-teal-750 bg-teal-500/10 border border-teal-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          Status: Planning
+        <ScrollReveal delay={0.1}>
+          <section className="mb-16">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C] flex items-center gap-2">
+                <Globe className="w-5 h-5 text-[#4C7ABF]" />
+                {user ? "Cloud Workspace Trips" : "Local Saved Itineraries"}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+              {savedTrips.map((trip, idx) => {
+                const attractionsCount = (trip.itinerary && trip.itinerary.length > 0) 
+                  ? trip.itinerary.reduce((sum: number, d: any) => sum + (d.activities?.length || 0), 0) 
+                  : 3;
+                
+                return (
+                  <ScrollReveal key={trip.id} delay={idx * 0.08} direction="up">
+                    <div
+                      onClick={() => router.push(`/planner/${trip.id}`)}
+                      className="group p-5 rounded-card-ds border border-slate-200/60 bg-white shadow-card-ds hover:shadow-elevated-ds hover:border-teal-500/20 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[175px] text-left h-full"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-teal-700 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/15">
+                            {trip.days} Days
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/compare?a=${trip.id}`);
+                              }}
+                              className="text-[9px] font-extrabold text-indigo-700 bg-indigo-500/10 hover:bg-indigo-500/25 border border-indigo-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider transition-colors cursor-pointer"
+                              title="Compare destinations"
+                            >
+                              Compare
+                            </button>
+                            <span className="text-[9px] font-extrabold text-teal-750 bg-teal-500/10 border border-teal-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              Status: Planning
+                            </span>
+                            <button
+                              onClick={(e) => handleDeleteSaved(trip.id, e)}
+                              className="p-1.5 rounded-full hover:bg-red-500/10 text-gray-450 hover:text-red-500 transition-colors"
+                              title="Delete Trip"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <h3 className="text-lg font-bold text-slate-900 mt-3 font-display flex items-center gap-1.5">
+                          <span>{trip.destination}</span>
+                          <span>{getFlagEmoji(trip.destination)}</span>
+                        </h3>
+                        
+                        <p className="text-[11px] text-slate-500 mt-1 font-semibold">
+                          Origin: {trip.originCity} • {trip.travelers} Pax
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-[11px] text-slate-650 border-t border-gray-150 pt-3 mt-4">
+                        <span className="flex items-center gap-1 font-bold text-teal-850">
+                          💰 Budget: ₹{trip.budgetLimit.toLocaleString("en-IN")}
                         </span>
-                        <button
-                          onClick={(e) => handleDeleteSaved(trip.id, e)}
-                          className="p-1.5 rounded-full hover:bg-red-500/10 text-gray-450 hover:text-red-500 transition-colors"
-                          title="Delete Trip"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <span className="flex items-center gap-1 font-bold text-teal-700">
+                          📍 {attractionsCount} Attractions
+                        </span>
                       </div>
                     </div>
-                    
-                    <h3 className="text-lg font-bold text-slate-900 mt-3 font-display flex items-center gap-1.5">
-                      <span>{trip.destination}</span>
-                      <span>{getFlagEmoji(trip.destination)}</span>
-                    </h3>
-                    
-                    <p className="text-[11px] text-slate-500 mt-1 font-semibold">
-                      Origin: {trip.originCity} • {trip.travelers} Pax
+                  </ScrollReveal>
+                );
+              })}
+            </div>
+          </section>
+        </ScrollReveal>
+      )}
+
+      {/* 4. AI WORKSPACE SHOWCASE (NEW) */}
+      <ScrollReveal delay={0.1}>
+        <section className="mb-16 p-6 md:p-8 rounded-3xl border border-gray-200/40 bg-[#FAF8F5] shadow-soft">
+          <div className="max-w-xl text-left mb-8">
+            <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#3A9687] block mb-1">Workspace Highlights</span>
+            <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C]">
+              Single Workspace, Zero Clutter.
+            </h2>
+            <p className="text-xs text-[#666059] mt-1.5 leading-relaxed">
+              Stop scanning dozens of browser tabs. Plan, cache, and schedule your trip activities, flights, hotels, and packing lists all in one responsive interface.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+            {[
+              { icon: Navigation, color: "text-teal-650", bg: "bg-teal-500/10 border-teal-500/20", title: "1. Map Routing", desc: "Auto-resolved GPS coordinates display your day stops on an interactive routing line." },
+              { icon: Landmark, color: "text-[#4C7ABF]", bg: "bg-[#4C7ABF]/10 border-[#4C7ABF]/20", title: "2. Deal Curation", desc: "Scan matching flights and hotels integrated straight into your itinerary planner sidebar." },
+              { icon: CloudSun, color: "text-emerald-600", bg: "bg-emerald-500/10 border-emerald-500/20", title: "3. Weather Advice", desc: "Monitor dynamic forecast metrics and auto-generate category-specific packing advice." },
+              { icon: Sparkles, color: "text-purple-600", bg: "bg-purple-500/10 border-purple-500/20", title: "4. AI Co-Pilot", desc: "Refine locations, ask budget allocation tips, or re-organize days by talking to your co-pilot." }
+            ].map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <ScrollReveal key={idx} delay={idx * 0.08} direction="up">
+                  <div className="p-5 rounded-2xl border border-gray-200/30 bg-white/70 shadow-sm h-full">
+                    <div className={`w-8 h-8 rounded-xl ${item.bg} flex items-center justify-center mb-3`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider mb-1">{item.title}</h3>
+                    <p className="text-[11px] text-[#666059] leading-relaxed">
+                      {item.desc}
                     </p>
                   </div>
-                  
-                  <div className="flex items-center justify-between text-[11px] text-slate-650 border-t border-gray-150 pt-3 mt-4">
-                    <span className="flex items-center gap-1 font-bold text-teal-850">
-                      💰 Budget: ₹{trip.budgetLimit.toLocaleString("en-IN")}
-                    </span>
-                    <span className="flex items-center gap-1 font-bold text-teal-700">
-                      📍 {attractionsCount} Attractions
-                    </span>
-                  </div>
-                </div>
+                </ScrollReveal>
               );
             })}
           </div>
         </section>
-      )}
-
-      {/* 4. AI WORKSPACE SHOWCASE (NEW) */}
-      <section className="mb-16 p-6 md:p-8 rounded-3xl border border-gray-200/40 bg-[#FAF8F5] shadow-soft">
-        <div className="max-w-xl text-left mb-8">
-          <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#3A9687] block mb-1">Workspace Highlights</span>
-          <h2 className="text-xl md:text-2xl font-extrabold font-display text-[#221F1C]">
-            Single Workspace, Zero Clutter.
-          </h2>
-          <p className="text-xs text-[#666059] mt-1.5 leading-relaxed">
-            Stop scanning dozens of browser tabs. Plan, cache, and schedule your trip activities, flights, hotels, and packing lists all in one responsive interface.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
-          <div className="p-5 rounded-2xl border border-gray-200/30 bg-white/70 shadow-sm">
-            <div className="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mb-3">
-              <Navigation className="w-4 h-4 text-teal-600" />
-            </div>
-            <h3 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider mb-1">1. Map Routing</h3>
-            <p className="text-[11px] text-[#666059] leading-relaxed">
-              Auto-resolved GPS coordinates display your day stops on an interactive routing line.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl border border-gray-200/30 bg-white/70 shadow-sm">
-            <div className="w-8 h-8 rounded-xl bg-[#4C7ABF]/10 border border-[#4C7ABF]/20 flex items-center justify-center mb-3">
-              <Landmark className="w-4 h-4 text-[#4C7ABF]" />
-            </div>
-            <h3 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider mb-1">2. Deal Curation</h3>
-            <p className="text-[11px] text-[#666059] leading-relaxed">
-              Scan matching flights and hotels integrated straight into your itinerary planner sidebar.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl border border-gray-200/30 bg-white/70 shadow-sm">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
-              <CloudSun className="w-4 h-4 text-emerald-600" />
-            </div>
-            <h3 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider mb-1">3. Weather Advice</h3>
-            <p className="text-[11px] text-[#666059] leading-relaxed">
-              Monitor dynamic forecast metrics and auto-generate category-specific packing advice.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl border border-gray-200/30 bg-white/70 shadow-sm">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
-              <Sparkles className="w-4 h-4 text-purple-600" />
-            </div>
-            <h3 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider mb-1">4. AI Co-Pilot</h3>
-            <p className="text-[11px] text-[#666059] leading-relaxed">
-              Refine locations, ask budget allocation tips, or re-organize days by talking to your co-pilot.
-            </p>
-          </div>
-        </div>
-      </section>
-
+      </ScrollReveal>
 
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { MoreVertical, Printer, Calendar, Share2, Globe, BookOpen, Bell, Check } from "lucide-react";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Trip, TripDay, TripActivity } from "@/types/trip";
 
 interface ExportButtonsProps {
@@ -16,6 +16,20 @@ export default function ExportButtons({ trip, onTimelineClick, onRemindersClick 
   const [copiedPublic, setCopiedPublic] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [scrollDir, setScrollDir] = useState<"up" | "down">("up");
+
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (Math.abs(currentY - lastY) > 8) {
+        setScrollDir(currentY > lastY ? "down" : "up");
+        lastY = currentY;
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -129,37 +143,13 @@ export default function ExportButtons({ trip, onTimelineClick, onRemindersClick 
     { label: "Reminders", icon: Bell, action: () => { onRemindersClick(); setMenuOpen(false); }, colour: "text-emerald-600", tooltip: "Manage activity reminders" },
   ];
 
-  const dropdownVariants: Variants = {
-    closed: {
-      opacity: 0,
-      scale: 0.95,
-      y: -10,
-      transition: {
-        staggerChildren: 0.03,
-        staggerDirection: -1
-      }
-    },
-    open: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 380,
-        damping: 30,
-        staggerChildren: 0.05,
-        delayChildren: 0.05
-      }
-    }
-  };
-
-  const itemVariants = {
-    closed: { opacity: 0, x: -8 },
-    open: { opacity: 1, x: 0 }
-  };
-
   return (
-    <div className="relative" ref={menuRef}>
+    <motion.div
+      animate={{ y: scrollDir === "down" && !menuOpen ? -60 : 0, opacity: scrollDir === "down" && !menuOpen ? 0 : 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="relative"
+      ref={menuRef}
+    >
       <div className="group relative">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -167,7 +157,7 @@ export default function ExportButtons({ trip, onTimelineClick, onRemindersClick 
           aria-label="More options"
         >
           <motion.div
-            animate={{ rotate: menuOpen ? 15 : 0 }}
+            animate={{ rotate: menuOpen ? 90 : 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
             <MoreVertical className="w-4 h-4 text-gray-700" />
@@ -181,40 +171,51 @@ export default function ExportButtons({ trip, onTimelineClick, onRemindersClick 
       <AnimatePresence>
         {menuOpen && (
           <motion.div
-            variants={dropdownVariants}
-            initial="closed"
-            animate="open"
-            exit="closed"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 350, damping: 32 }}
             className="absolute right-0 top-12 w-52 rounded-2xl glass-panel border border-gray-250/30 bg-white/95 shadow-xl overflow-hidden z-50"
           >
-            {menuItems.map((item, idx) => (
-              <motion.div key={idx} variants={itemVariants}>
-                <button
-                  onClick={item.action}
-                  className="w-full flex items-center justify-between gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-left group/item relative"
+            <motion.div
+              initial={{ y: -10 }}
+              animate={{ y: 0 }}
+              transition={{ delay: 0.05 }}
+            >
+              {menuItems.map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
                 >
-                  <div className="flex items-center gap-2.5">
-                    {item.isCopied ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <item.icon className={`w-3.5 h-3.5 ${item.colour}`} />
-                    )}
-                    <span className={item.isCopied ? "text-emerald-600" : ""}>
-                      {item.isCopied ? "Copied!" : item.label}
-                    </span>
-                  </div>
+                  <button
+                    onClick={item.action}
+                    className="w-full flex items-center justify-between gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-left group/item relative"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      {item.isCopied ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <item.icon className={`w-3.5 h-3.5 ${item.colour}`} />
+                      )}
+                      <span className={item.isCopied ? "text-emerald-600" : ""}>
+                        {item.isCopied ? "Copied!" : item.label}
+                      </span>
+                    </div>
 
-                  {item.tooltip && (
-                    <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 hidden group-hover/item:inline-block bg-gray-900 text-white text-[9px] px-2 py-1 rounded shadow-md whitespace-nowrap z-50 pointer-events-none">
-                      {item.tooltip}
-                    </span>
-                  )}
-                </button>
-              </motion.div>
-            ))}
+                    {item.tooltip && (
+                      <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 hidden group-hover/item:inline-block bg-gray-900 text-white text-[9px] px-2 py-1 rounded shadow-md whitespace-nowrap z-50 pointer-events-none">
+                        {item.tooltip}
+                      </span>
+                    )}
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

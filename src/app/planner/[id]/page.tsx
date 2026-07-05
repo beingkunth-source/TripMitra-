@@ -14,6 +14,7 @@ import ExportButtons from "@/components/ExportButtons";
 import AIChatAssistant from "@/components/AIChatAssistant";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import TripHeader from "@/components/TripHeader";
+import ScrollReveal from "@/components/ScrollReveal";
 import { requestAndSchedule } from "@/lib/notificationScheduler";
 
 // Dynamic Import for Leaflet Map to avoid SSR 'window is not defined' compilation errors
@@ -532,14 +533,14 @@ export default function PlannerPage() {
           </div>
 
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-            {trip.itinerary.map((day) => {
+            {trip.itinerary.map((day, idx) => {
               const isExpanded = expandedDays[day.dayNumber];
               const isActive = activeDay === day.dayNumber;
 
               return (
-                <div
-                  key={day.dayNumber}
-                  className={`rounded-2xl border transition-all duration-300 ${
+                <ScrollReveal key={day.dayNumber} delay={idx * 0.06}>
+                  <div
+                    className={`rounded-2xl border transition-all duration-300 ${
                     isActive 
                       ? "border-teal-500/30 bg-teal-50/50" 
                       : "border-gray-200 bg-white hover:border-gray-300"
@@ -760,8 +761,9 @@ export default function PlannerPage() {
                     </div>
                   )}
                 </div>
-              );
-            })}
+              </ScrollReveal>
+            );
+          })}
             
             {/* Add Day Button */}
             <button

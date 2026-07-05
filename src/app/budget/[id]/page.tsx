@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useActiveTrip, TripExpense, updateTripRecord } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
+import ScrollReveal from "@/components/ScrollReveal";
 
 // ─── Category colour palette ────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
@@ -333,63 +334,69 @@ export default function BudgetPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         
         {/* Total Budget Limit card */}
-        <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left flex flex-col justify-between min-h-[110px] shadow-sm">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-teal-400/70">Total Budget Limit</span>
-            <h2 className="text-2xl font-extrabold text-gray-800 dark:text-white mt-1 font-display">
-              ₹{trip.budgetLimit.toLocaleString("en-IN")}
-            </h2>
+        <ScrollReveal delay={0} direction="up" className="flex flex-col h-full">
+          <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left flex flex-col justify-between min-h-[110px] shadow-sm h-full">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-teal-400/70">Total Budget Limit</span>
+              <h2 className="text-2xl font-extrabold text-gray-800 dark:text-white mt-1 font-display">
+                ₹{trip.budgetLimit.toLocaleString("en-IN")}
+              </h2>
+            </div>
+            <form onSubmit={handleUpdateLimitSubmit} className="flex gap-2 mt-3">
+              <input
+                type="number"
+                value={inputLimit}
+                onChange={(e) => setInputLimit(e.target.value)}
+                className="flex-1 glass-input px-2.5 py-1 rounded-lg text-xs focus:outline-none dark:bg-teal-950/60 dark:border-teal-500/20"
+                placeholder="Update budget..."
+              />
+              <button
+                type="submit"
+                className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded-lg text-[10px] font-bold text-white transition-colors"
+              >
+                Update
+              </button>
+            </form>
           </div>
-          <form onSubmit={handleUpdateLimitSubmit} className="flex gap-2 mt-3">
-            <input
-              type="number"
-              value={inputLimit}
-              onChange={(e) => setInputLimit(e.target.value)}
-              className="flex-1 glass-input px-2.5 py-1 rounded-lg text-xs focus:outline-none dark:bg-teal-950/60 dark:border-teal-500/20"
-              placeholder="Update budget..."
-            />
-            <button
-              type="submit"
-              className="px-3 py-1 bg-teal-600 hover:bg-teal-500 rounded-lg text-[10px] font-bold text-white transition-colors"
-            >
-              Update
-            </button>
-          </form>
-        </div>
+        </ScrollReveal>
 
         {/* Current Spent card */}
-        <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left min-h-[110px] shadow-sm flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-teal-400/70">Total Expenses</span>
-            <h2 className="text-2xl font-extrabold text-gray-800 dark:text-white mt-1 font-display">
-              ₹{totalSpent.toLocaleString("en-IN")}
-            </h2>
+        <ScrollReveal delay={0.08} direction="up" className="flex flex-col h-full">
+          <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left min-h-[110px] shadow-sm flex flex-col justify-between h-full">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-teal-400/70">Total Expenses</span>
+              <h2 className="text-2xl font-extrabold text-gray-800 dark:text-white mt-1 font-display">
+                ₹{totalSpent.toLocaleString("en-IN")}
+              </h2>
+            </div>
+            <div className="text-[10px] text-gray-500 dark:text-teal-300 mt-3 font-semibold">
+              {trip.expenses.length} Transactions recorded
+            </div>
           </div>
-          <div className="text-[10px] text-gray-500 dark:text-teal-300 mt-3 font-semibold">
-            {trip.expenses.length} Transactions recorded
-          </div>
-        </div>
+        </ScrollReveal>
 
         {/* Remaining Balance card */}
-        <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left min-h-[110px] shadow-sm flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-teal-400/70">Remaining Balance</span>
-            <h2 className={`text-2xl font-extrabold mt-1 font-display ${isOverBudget ? "text-coral-500" : "text-emerald-600 dark:text-emerald-400"}`}>
-              ₹{remaining.toLocaleString("en-IN")}
-            </h2>
+        <ScrollReveal delay={0.16} direction="up" className="flex flex-col h-full">
+          <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left min-h-[110px] shadow-sm flex flex-col justify-between h-full">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-teal-400/70">Remaining Balance</span>
+              <h2 className={`text-2xl font-extrabold mt-1 font-display ${isOverBudget ? "text-coral-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                ₹{remaining.toLocaleString("en-IN")}
+              </h2>
+            </div>
+            <div className="mt-3 flex items-center gap-1.5 text-[10px]">
+              {isOverBudget ? (
+                <span className="inline-flex items-center gap-1 text-coral-500 bg-coral-500/10 px-2 py-0.5 rounded font-bold uppercase">
+                  <AlertCircle className="w-3 h-3" /> Over budget!
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold uppercase">
+                  <TrendingUp className="w-3 h-3" /> Within budget
+                </span>
+              )}
+            </div>
           </div>
-          <div className="mt-3 flex items-center gap-1.5 text-[10px]">
-            {isOverBudget ? (
-              <span className="inline-flex items-center gap-1 text-coral-500 bg-coral-500/10 px-2 py-0.5 rounded font-bold uppercase">
-                <AlertCircle className="w-3 h-3" /> Over budget!
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold uppercase">
-                <TrendingUp className="w-3 h-3" /> Within budget
-              </span>
-            )}
-          </div>
-        </div>
+        </ScrollReveal>
 
       </div>
 
@@ -571,62 +578,64 @@ export default function BudgetPage() {
           </div>
 
           {/* DYNAMIC SVG DONUT CHART */}
-          <div className="p-6 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left shadow-sm">
-            <h3 className="text-xs font-bold font-display uppercase tracking-wider text-gray-700 dark:text-teal-200 mb-4">
-              Category Breakdown
-            </h3>
-            
-            {hasSpend ? (
-              <div className="flex flex-col sm:flex-row items-center gap-8 justify-around">
-                <div className="relative w-36 h-36">
-                  <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                    <circle cx="50" cy="50" r="35" className="fill-transparent stroke-gray-100 dark:stroke-teal-950/60 stroke-[10]" />
+          <ScrollReveal delay={0.1}>
+            <div className="p-6 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left shadow-sm">
+              <h3 className="text-xs font-bold font-display uppercase tracking-wider text-gray-700 dark:text-teal-200 mb-4">
+                Category Breakdown
+              </h3>
+              
+              {hasSpend ? (
+                <div className="flex flex-col sm:flex-row items-center gap-8 justify-around">
+                  <div className="relative w-36 h-36">
+                    <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                      <circle cx="50" cy="50" r="35" className="fill-transparent stroke-gray-100 dark:stroke-teal-950/60 stroke-[10]" />
+                      {donutSegments.map((seg, idx) => (
+                        <circle
+                          key={idx}
+                          cx="50"
+                          cy="50"
+                          r="35"
+                          className="fill-transparent stroke-[10] transition-all duration-500 ease-out"
+                          stroke={seg.color}
+                          strokeDasharray={seg.strokeDasharray}
+                          strokeDashoffset={seg.strokeDashoffset}
+                          strokeLinecap="round"
+                        />
+                      ))}
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-[10px] text-gray-400 dark:text-teal-400 uppercase tracking-widest font-bold font-display">Spent</span>
+                      <span className="text-sm font-extrabold text-gray-800 dark:text-white mt-0.5">
+                        ₹{totalSpent > 100000 ? `${(totalSpent / 1000).toFixed(0)}k` : totalSpent.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 w-full max-w-[200px]">
                     {donutSegments.map((seg, idx) => (
-                      <circle
-                        key={idx}
-                        cx="50"
-                        cy="50"
-                        r="35"
-                        className="fill-transparent stroke-[10] transition-all duration-500 ease-out"
-                        stroke={seg.color}
-                        strokeDasharray={seg.strokeDasharray}
-                        strokeDashoffset={seg.strokeDashoffset}
-                        strokeLinecap="round"
-                      />
+                      <div key={idx} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                          <span className="text-gray-500 dark:text-teal-300 font-medium">{seg.category}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold font-mono text-gray-855 dark:text-white" style={{ color: seg.color }}>{seg.percentage}%</span>
+                        </div>
+                      </div>
                     ))}
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-[10px] text-gray-400 dark:text-teal-400 uppercase tracking-widest font-bold font-display">Spent</span>
-                    <span className="text-sm font-extrabold text-gray-800 dark:text-white mt-0.5">
-                      ₹{totalSpent > 100000 ? `${(totalSpent / 1000).toFixed(0)}k` : totalSpent.toLocaleString()}
-                    </span>
                   </div>
                 </div>
-
-                <div className="space-y-2.5 w-full max-w-[200px]">
-                  {donutSegments.map((seg, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
-                        <span className="text-gray-500 dark:text-teal-300 font-medium">{seg.category}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold font-mono text-gray-805 dark:text-white" style={{ color: seg.color }}>{seg.percentage}%</span>
-                      </div>
-                    </div>
-                  ))}
+              ) : (
+                <div className="flex flex-col items-center justify-center py-6 px-4 rounded-xl border border-dashed border-gray-300 dark:border-teal-550/20 bg-gray-50/50 dark:bg-[#0d1f1c]/30 text-center w-full">
+                  <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 dark:border-teal-500/20 flex items-center justify-center mb-3">
+                    <Landmark className="w-5 h-5 text-gray-400 dark:text-teal-400/70" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-600 dark:text-teal-300">No spend yet</p>
+                  <p className="text-[10px] text-gray-400 dark:text-teal-500 mt-1">Expenses you log will show in this breakdown</p>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-6 px-4 rounded-xl border border-dashed border-gray-300 dark:border-teal-550/20 bg-gray-50/50 dark:bg-[#0d1f1c]/30 text-center w-full">
-                <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 dark:border-teal-500/20 flex items-center justify-center mb-3">
-                  <Landmark className="w-5 h-5 text-gray-400 dark:text-teal-400/70" />
-                </div>
-                <p className="text-xs font-bold text-gray-600 dark:text-teal-300">No spend yet</p>
-                <p className="text-[10px] text-gray-400 dark:text-teal-500 mt-1">Expenses you log will show in this breakdown</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </ScrollReveal>
 
           {/* SETTLE UP LEDGER */}
           <div className="p-5 rounded-2xl glass-panel border border-gray-200 dark:border-teal-400/15 bg-white/80 dark:bg-[#132B2A]/70 text-left shadow-sm">
