@@ -4,6 +4,18 @@
 
 ---
 
+## 📸 Screenshots
+
+| Homepage | Trip Planner |
+|:---:|:---:|
+| ![Homepage](public/screenshots/home.png) | ![Trip Planner](public/screenshots/itinerary.png) |
+
+| Budget Ledger |
+|:---:|
+| ![Budget Ledger](public/screenshots/budget.png) |
+
+---
+
 ## 🚀 Features
 
 | Feature | Description |
