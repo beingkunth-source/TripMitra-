@@ -54,6 +54,37 @@ export default function HomePage() {
   const [generating, setGenerating] = useState(false);
   const [user, setUser] = useState<any>(null);
 
+  // Load the most recent trip for the preview card
+  const latestTrip = savedTrips.length > 0 ? savedTrips[0] : null;
+
+  // Values for preview card
+  const previewDest = latestTrip ? latestTrip.destination : "Tokyo Adventure";
+  const previewDays = latestTrip ? latestTrip.days : 7;
+  const previewOrigin = latestTrip ? (latestTrip.originCity || "Mumbai") : "Delhi";
+  const previewFlag = getFlagEmoji(previewDest);
+
+  // Stop 1 & Stop 2 for the route
+  const firstDay = latestTrip?.itinerary?.[0];
+  const stop1 = firstDay?.activities?.[0]?.name ? (firstDay.activities[0].name.length > 15 ? firstDay.activities[0].name.substring(0, 15) + "..." : firstDay.activities[0].name) : "Shibuya";
+  const stop2 = firstDay?.activities?.[firstDay.activities.length - 1]?.name ? (firstDay.activities[firstDay.activities.length - 1].name.length > 15 ? firstDay.activities[firstDay.activities.length - 1].name.substring(0, 15) + "..." : firstDay.activities[firstDay.activities.length - 1].name) : (latestTrip ? "Airport" : "Asakusa");
+
+  // Dynamic values for budget tracking
+  const totalBudget = latestTrip ? latestTrip.budgetLimit : 120000;
+  const totalSpent = latestTrip && Array.isArray(latestTrip.expenses)
+    ? latestTrip.expenses.reduce((sum: number, exp: any) => sum + (parseFloat(exp.amount) || 0), 0)
+    : 72000;
+  const spentPct = totalBudget > 0 ? Math.min(100, Math.round((totalSpent / totalBudget) * 100)) : 0;
+
+  // Dynamic flights price/carrier
+  const flightPrice = latestTrip ? Math.round(4500 + (totalBudget * 0.12)) : 42500;
+  const hotelPrice = latestTrip ? Math.round(1500 + (totalBudget * 0.08)) : 18200;
+
+  const handlePreviewClick = () => {
+    if (latestTrip) {
+      router.push(`/planner/${latestTrip.id}`);
+    }
+  };
+
   // Rotating placeholder suggestions
   const placeholderSuggestions = [
     "Kyoto under ₹90K",
@@ -564,16 +595,19 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="w-full max-w-[480px] rounded-3xl border border-gray-200/60 bg-[#FAF8F5]/85 backdrop-blur-md p-6 shadow-xl relative overflow-hidden flex flex-col gap-4.5 text-left"
+            onClick={handlePreviewClick}
+            className={`w-full max-w-[480px] rounded-3xl border border-gray-200/60 bg-[#FAF8F5]/85 backdrop-blur-md p-6 shadow-xl relative overflow-hidden flex flex-col gap-4.5 text-left ${latestTrip ? "cursor-pointer hover:border-teal-500/30 transition-all duration-355" : ""}`}
           >
             {/* Mockup Header */}
             <div className="flex justify-between items-center pb-3 border-b border-gray-200/50">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-lg">🇯🇵</span>
-                  <h4 className="text-base font-black text-slate-900 font-display">Tokyo Adventure</h4>
+                  <span className="text-lg">{previewFlag}</span>
+                  <h4 className="text-base font-black text-slate-900 font-display">{previewDest}</h4>
                 </div>
-                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Spring Break • 7 Days</p>
+                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                  {latestTrip ? "Last Planned Trip" : "Spring Break"} • {previewDays} Days
+                </p>
               </div>
               
               {/* Collaborators Stack */}
@@ -581,7 +615,6 @@ export default function HomePage() {
                 <div className="w-8 h-8 rounded-full bg-teal-600 text-white font-black text-xs flex items-center justify-center border border-white shadow-sm">A</div>
                 <div className="w-8 h-8 rounded-full bg-coral-500 text-white font-black text-xs flex items-center justify-center border border-white -ml-2.5 shadow-sm">B</div>
                 <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center border border-white -ml-2.5 shadow-sm">C</div>
-                <div className="w-8 h-8 rounded-full bg-amber-600 text-white font-black text-xs flex items-center justify-center border border-white -ml-2.5 shadow-sm">+1</div>
                 <span className="absolute bottom-0 right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white animate-pulse" />
               </div>
             </div>
@@ -606,11 +639,11 @@ export default function HomePage() {
                   </svg>
                   <div className="absolute left-6 top-6 flex flex-col items-center">
                     <span className="w-2.5 h-2.5 bg-teal-600 rounded-full ring-4 ring-teal-500/20" />
-                    <span className="text-[9px] font-bold text-slate-700 mt-1">Shibuya</span>
+                    <span className="text-[9px] font-bold text-slate-700 mt-1 max-w-[80px] truncate">{stop1}</span>
                   </div>
                   <div className="absolute right-6 top-6 flex flex-col items-center">
                     <span className="w-2.5 h-2.5 bg-emerald-600 rounded-full ring-4 ring-emerald-500/20" />
-                    <span className="text-[9px] font-bold text-slate-700 mt-1">Asakusa</span>
+                    <span className="text-[9px] font-bold text-slate-700 mt-1 max-w-[80px] truncate">{stop2}</span>
                   </div>
                 </div>
               </motion.div>
@@ -627,12 +660,12 @@ export default function HomePage() {
                     <Plane className="w-[18px] h-[18px] transform rotate-45" />
                   </div>
                   <div>
-                    <h5 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Delhi ⇄ Tokyo</h5>
-                    <p className="text-[10px] text-slate-500 font-bold mt-0.5">ANA NH-828 • Direct</p>
+                    <h5 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">{previewOrigin.substring(0, 8)} ⇄ {previewDest.split(",")[0].substring(0, 8)}</h5>
+                    <p className="text-[10px] text-slate-505 font-bold mt-0.5">{latestTrip ? "Best Route Deal" : "ANA NH-828 • Direct"}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-black text-emerald-600">₹42,500</p>
+                  <p className="text-sm font-black text-emerald-600">₹{flightPrice.toLocaleString("en-IN")}</p>
                   <p className="text-[9px] text-teal-755 bg-teal-500/10 px-1.5 py-0.5 rounded-full font-bold mt-1 uppercase tracking-wider">✓ Selected</p>
                 </div>
               </motion.div>
@@ -649,12 +682,14 @@ export default function HomePage() {
                     <Hotel className="w-[18px] h-[18px]" />
                   </div>
                   <div>
-                    <h5 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Park Hyatt Tokyo</h5>
-                    <p className="text-[10px] text-slate-500 font-bold mt-0.5">★ 4.8 (850 reviews)</p>
+                    <h5 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                      {latestTrip ? `${previewDest.split(",")[0]} Lodge` : "Park Hyatt Tokyo"}
+                    </h5>
+                    <p className="text-[10px] text-slate-505 font-bold mt-0.5">★ 4.8 curated ratings</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-black text-emerald-600">₹18,200/n</p>
+                  <p className="text-sm font-black text-emerald-600">₹{hotelPrice.toLocaleString("en-IN")}/n</p>
                   <p className="text-[9px] text-teal-755 font-bold mt-1 uppercase tracking-wider">Saved to Deck</p>
                 </div>
               </motion.div>
@@ -668,10 +703,10 @@ export default function HomePage() {
               >
                 <div>
                   <h5 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Expense Tracker</h5>
-                  <p className="text-[11px] text-slate-505 font-bold mt-0.5">Spent: ₹72,000 / ₹1,20,000</p>
+                  <p className="text-[11px] text-slate-505 font-bold mt-0.5">Spent: ₹{totalSpent.toLocaleString("en-IN")} / ₹{totalBudget.toLocaleString("en-IN")}</p>
                 </div>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center relative shadow-inner" style={{ background: "conic-gradient(#0f766e 60%, #e2e8f0 60% 100%)" }}>
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-xs font-black text-[#221F1C]">60%</div>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center relative shadow-inner" style={{ background: `conic-gradient(#0f766e ${spentPct}%, #e2e8f0 ${spentPct}% 100%)` }}>
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-xs font-black text-[#221F1C]">{spentPct}%</div>
                 </div>
               </motion.div>
             </div>
