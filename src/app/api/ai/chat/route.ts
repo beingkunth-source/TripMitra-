@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGemini } from "@/lib/gemini";
+import { CITY_COORDS } from "@/lib/geo";
 
 export async function POST(request: Request) {
   try {
@@ -30,12 +31,66 @@ Keep the suggestions short (4-8 words). Do not use markdown blocks, just raw JSO
       return NextResponse.json(geminiData);
     }
 
-    // Heuristic Fallback Analysis if Gemini fails or quota is hit
+    // Intelligent Fallback Analysis if Gemini is rate-limited (429) or fails
     const lowerMessage = latestMessage.toLowerCase();
     let reply = "";
-    let suggestions = [];
+    let suggestions: string[] = [];
 
-    if (lowerMessage.includes("flight") || lowerMessage.includes("ticket") || lowerMessage.includes("airline") || lowerMessage.includes("fly")) {
+    // Check if the user is asking about costs, buses, trains, cabs between cities
+    const hasBus = lowerMessage.includes("bus");
+    const hasTrain = lowerMessage.includes("train");
+    const hasCab = lowerMessage.includes("cab") || lowerMessage.includes("taxi") || lowerMessage.includes("car");
+    const hasFlight = lowerMessage.includes("flight") || lowerMessage.includes("plane") || lowerMessage.includes("air");
+    const hasCost = lowerMessage.includes("cost") || lowerMessage.includes("how much") || lowerMessage.includes("price") || lowerMessage.includes("fare") || lowerMessage.includes("ruppe") || lowerMessage.includes("rupee") || lowerMessage.includes("ticket");
+
+    if (hasCost && (hasBus || hasTrain || hasCab || hasFlight)) {
+      let origin = "Mumbai";
+      let dest = destination || "Gwalior";
+      
+      const routeMatch = lowerMessage.match(/(?:from\s+)?([a-z\s]+)\s+to\s+([a-z\s\?]+)/i);
+      if (routeMatch) {
+        origin = routeMatch[1].trim();
+        dest = routeMatch[2].replace(/\?/g, "").trim();
+      }
+
+      // Calculate approximate distance using geo database
+      let distanceKm = 800; // default
+      const coord1 = CITY_COORDS[origin.toLowerCase()] || CITY_COORDS[origin.toLowerCase().split(" ")[0]] || CITY_COORDS["mumbai"];
+      const coord2 = CITY_COORDS[dest.toLowerCase()] || CITY_COORDS[dest.toLowerCase().split(" ")[0]] || CITY_COORDS["gwalior"];
+
+      if (coord1 && coord2) {
+        const R = 6371; // Earth radius in km
+        const dLat = (coord2.lat - coord1.lat) * Math.PI / 180;
+        const dLon = (coord2.lng - coord1.lng) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(coord1.lat * Math.PI / 180) * Math.cos(coord2.lat * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        distanceKm = Math.round(R * c);
+      }
+
+      if (hasBus) {
+        const minPrice = Math.round(distanceKm * 0.9 + 100);
+        const maxPrice = Math.round(distanceKm * 1.5 + 250);
+        reply = `A bus ticket from **${origin}** to **${dest}** typically costs between **₹${minPrice}** and **₹${maxPrice}** depending on the operator (ordinary sleeper vs. private AC Volvo Sleeper coaches). The road trip takes about **${Math.round(distanceKm / 55)} to ${Math.round(distanceKm / 50)} hours**.`;
+        suggestions = ["Train ticket options", "Flight prices"];
+      } else if (hasTrain) {
+        const sleeper = Math.round(distanceKm * 0.4 + 120);
+        const thirdAC = Math.round(distanceKm * 1.1 + 300);
+        const secondAC = Math.round(distanceKm * 1.6 + 500);
+        reply = `Traveling from **${origin}** to **${dest}** by train is highly convenient. Ticket pricing is around:\n- **Sleeper Class (SL):** ₹${sleeper} - ₹${sleeper + 150}\n- **3 AC Class (3A):** ₹${thirdAC} - ₹${thirdAC + 200}\n- **2 AC Class (2A):** ₹${secondAC} - ₹${secondAC + 300}\n\nWe recommend booking on the IRCTC website.`;
+        suggestions = ["Bus fare estimates", "Local transit details"];
+      } else if (hasCab) {
+        const price = Math.round(distanceKm * 13 + 500);
+        reply = `A private one-way cab or taxi from **${origin}** to **${dest}** would cost around **₹${price}** to **₹${price + 2500}**, covering tolls, fuel, and driver allowances. It's a drive of approximately **${Math.round(distanceKm / 65)} hours**.`;
+        suggestions = ["Flight prices", "Bus fare estimates"];
+      } else {
+        const flightPrice = Math.round(3200 + distanceKm * 2.2);
+        reply = `Direct or connecting flights from **${origin}** to **${dest}** (nearest airport) typically range from **₹${flightPrice}** to **₹${flightPrice + 3000}** if booked in advance. Check the Deals tab for live details!`;
+        suggestions = ["Flight ticket details", "Hotel deals"];
+      }
+    } else if (lowerMessage.includes("flight") || lowerMessage.includes("ticket") || lowerMessage.includes("airline") || lowerMessage.includes("fly")) {
       reply = `To find the best flight options to **${destination || "your destination"}**, check the **Deals page** inside your workspace header! It pulls real-time flight rates and airline itineraries. I recommend booking at least 6-8 weeks in advance for the best deals.`;
       suggestions = ["Transit & subway hacks", "Budget eating tips"];
     } else if (lowerMessage.includes("transit") || lowerMessage.includes("subway") || lowerMessage.includes("transport") || lowerMessage.includes("bus") || lowerMessage.includes("metro") || lowerMessage.includes("cab") || lowerMessage.includes("taxi") || lowerMessage.includes("hack")) {
