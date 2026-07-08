@@ -1,9 +1,14 @@
 export const CITY_AIRPORT_MAP: Record<string, string> = {
-  'mumbai': 'BOM', 'bombay': 'BOM',
+  // Common misspellings and abbreviations
+  'dehli': 'DEL', 'new dehli': 'DEL',
+  'bombay': 'BOM', 'calcutta': 'CCU', 'madras': 'MAA',
+  
+  // Indian Metro / Primary Airports
+  'mumbai': 'BOM',
   'delhi': 'DEL', 'new delhi': 'DEL',
   'bangalore': 'BLR', 'bengaluru': 'BLR',
-  'chennai': 'MAA', 'madras': 'MAA',
-  'kolkata': 'CCU', 'calcutta': 'CCU',
+  'chennai': 'MAA',
+  'kolkata': 'CCU',
   'hyderabad': 'HYD',
   'ahmedabad': 'AMD',
   'pune': 'PNQ',
@@ -27,6 +32,29 @@ export const CITY_AIRPORT_MAP: Record<string, string> = {
   'patna': 'PAT',
   'ranchi': 'IXR',
   'dehradun': 'DED',
+
+  // Regional Indian Destinations
+  'gwalior': 'GWL',
+  'shillong': 'SHL',
+  'gangtok': 'IXB',
+  'leh': 'IXL',
+  'jodhpur': 'JDH',
+  'jaisalmer': 'JSA',
+  'udaipur': 'UDR',
+  'manali': 'KUU',
+  'shimla': 'SLV',
+  'rishikesh': 'DED',
+  'haridwar': 'DED',
+  'dharamshala': 'DHM',
+  'pondicherry': 'PNY',
+  'alleppey': 'COK',
+  'munnar': 'COK',
+  'ooty': 'CJB',
+  'coorg': 'MYQ',
+  'hampi': 'VDY',
+  'gokarna': 'GOI',
+
+  // International Destinations
   'sharjah': 'SHJ',
   'dubai': 'DXB',
   'abu dhabi': 'AUH',
@@ -40,6 +68,55 @@ export const CITY_AIRPORT_MAP: Record<string, string> = {
   'colombo': 'CMB',
   'kathmandu': 'KTM',
   'maldives': 'MLE', 'male': 'MLE',
+  'bali': 'DPS',
+  'tokyo': 'HND', 'shibuya': 'HND',
+  'osaka': 'KIX',
+  'kyoto': 'ITM',
+  'seoul': 'ICN',
+  'phuket': 'HKT',
+  'rome': 'FCO',
+  'amsterdam': 'AMS',
+  'frankfurt': 'FRA',
+  'zurich': 'ZRH',
+  'los angeles': 'LAX',
+  'san francisco': 'SFO',
+  'chicago': 'ORD',
+  'toronto': 'YYZ',
+  'vancouver': 'YVR',
+  'sydney': 'SYD',
+  'melbourne': 'MEL',
+  'auckland': 'AKL',
+  'cairo': 'CAI',
+  'cape town': 'CPT',
+  'nairobi': 'NBO',
+  'istanbul': 'IST',
+  'dubrovnik': 'DBV',
+  'prague': 'PRG',
+  'vienna': 'VIE',
+  'berlin': 'BER',
+  'lisbon': 'LIS',
+  'madrid': 'MAD',
+  'athens': 'ATH',
+  'santorini': 'JTR',
+  'taipei': 'TPE',
+  'manila': 'MNL',
+  'ho chi minh': 'SGN',
+  'hanoi': 'HAN',
+  'yangon': 'RGN',
+  'dhaka': 'DAC',
+  'islamabad': 'ISB',
+  'karachi': 'KHI',
+  'lahore': 'LHE',
+  'muscat': 'MCT',
+  'riyadh': 'RUH',
+  'jeddah': 'JED',
+  'dammam': 'DMM',
+  'kuwait': 'KWI',
+  'manama': 'BAH',
+  'beijing': 'PEK',
+  'shanghai': 'PVG',
+  'hong kong': 'HKG',
+  'europe': 'LHR'
 };
 
 export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -240,6 +317,12 @@ export async function resolveAirportCode(input: string): Promise<string> {
     } catch (gErr) {
       console.error("Gemini resolution failed for:", cleaned, gErr);
     }
+  }
+
+  // Fallback to "DEL" if not resolved to a valid IATA code, preventing 400 errors on SerpAPI
+  if (!/^[A-Z]{3}$/.test(cleaned)) {
+    console.warn(`[resolveAirportCode] Resolution failed for "${cleaned}". Using default fallback "DEL" to prevent 400 Bad Request.`);
+    return "DEL";
   }
 
   return cleaned;

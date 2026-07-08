@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { callSerpApi } from "@/lib/serpapi";
 import { toAirportCode, resolveAirportCode } from "@/lib/geo";
+import { callGemini } from "@/lib/gemini";
+import { getCached, setCached } from "@/lib/redis";
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +11,11 @@ export async function POST(request: Request) {
     const h = now.getHours();
     const serpKey = process.env.SERP_API_KEY;
 
-    // Real flights via SerpAPI when mode is plane, origin is specified, and API key exists
+    if (!origin || !destination) {
+      return NextResponse.json({ error: "Missing origin or destination" }, { status: 400 });
+    }
+
+    // 1. Real flights via SerpAPI when mode is plane, origin is specified, and API key exists
     if (mode === "plane" && origin && serpKey) {
       try {
         const depCode = await resolveAirportCode(origin);
@@ -47,19 +53,61 @@ export async function POST(request: Request) {
       }
     }
 
-    // Comprehensive Fallbacks
+    // 2. Try to get dynamic transit options from Gemini (with Redis cache)
+    const cacheKey = `tripmitra:transit:${origin.toLowerCase().trim()}:${destination.toLowerCase().trim()}:${mode}:${outbound_date || "any"}`;
+    let geminiResults = null;
+    
+    try {
+      const cached = await getCached<any>(cacheKey);
+      if (cached) {
+        return NextResponse.json({ mode, options: cached });
+      }
+    } catch (cErr) {
+      console.error("Cache read error for transit-options:", cErr);
+    }
+
+    const geminiPrompt = `Generate realistic travel transit options from "${origin}" to "${destination}" via "${mode}".
+    The output must be a JSON object with a single key "options" containing an array of 2 to 4 options matching this typescript structure:
+    For mode "plane":
+      { "departure": "10:00 AM", "arrival": "12:30 PM", "duration": "2h 30m", "price": 5500, "label": "Saver Economy", "pill": "budget", "airline": "IndiGo" }
+    For mode "train":
+      { "departure": "06:30 AM", "arrival": "12:00 PM", "duration": "5h 30m", "price": 850, "label": "Sleeper Class", "pill": "budget", "train": "Gatimaan Express" }
+    For mode "bus":
+      { "departure": "09:00 PM", "arrival": "03:30 AM", "duration": "6h 30m", "price": 800, "label": "A/C Sleeper", "pill": "standard", "bus": "Intercity SmartBus" }
+    For mode "car":
+      { "departure": "Flexible departure", "arrival": "Flexible arrival", "duration": "~6h driving", "price": 4500, "label": "Self-Drive Rental", "pill": "budget", "car": "Sedan (Fuel + Toll)" }
+
+    Provide accurate, real-world estimated prices in Indian Rupees (INR) for the year 2026.
+    Response must be ONLY valid JSON matching this format: { "options": [...] }. Do not add any markdown formatting, text, or explanations.`;
+
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const geminiData = await callGemini(geminiPrompt);
+        if (geminiData && Array.isArray(geminiData.options)) {
+          geminiResults = geminiData.options;
+          await setCached(cacheKey, geminiResults, 604800); // Cache for 7 days
+        }
+      } catch (gErr: any) {
+        console.error("Gemini failed to generate transit options:", gErr.message);
+      }
+    }
+
+    if (geminiResults) {
+      geminiResults.sort((a: any, b: any) => a.price - b.price);
+      return NextResponse.json({ mode, options: geminiResults });
+    }
+
+    // 3. Fallback Mock Data if Gemini is offline/rate-limited
     const options: Record<string, any[]> = {
       plane: [
         { departure: `${h}:00`, arrival: `${h + 2}:30`, duration: '2h 30m', price: 8500, label: 'Budget Saver', pill: 'budget', airline: 'IndiGo' },
         { departure: `${h + 1}:15`, arrival: `${h + 3}:30`, duration: '2h 15m', price: 12000, label: 'Standard Class', pill: 'standard', airline: 'SpiceJet' },
         { departure: `${h + 2}:00`, arrival: `${h + 4}:15`, duration: '2h 15m', price: 18500, label: 'Premium Cabin', pill: 'premium', airline: 'Vistara' },
-        { departure: `${h + 3}:30`, arrival: `${h + 5}:20`, duration: '1h 50m', price: 25000, label: 'Express Direct', pill: 'express', airline: 'Air India' },
       ],
       train: [
         { departure: `${h}:30`, arrival: `${h + 6}:00`, duration: '5h 30m', price: 1200, label: 'Sleeper Class', pill: 'budget', train: '12345 Express' },
         { departure: `${h + 1}:00`, arrival: `${h + 5}:45`, duration: '4h 45m', price: 2800, label: '3AC Tier', pill: 'standard', train: 'Shatabdi' },
         { departure: `${h + 2}:30`, arrival: `${h + 6}:30`, duration: '4h 00m', price: 4500, label: 'Tejas CC', pill: 'premium', train: 'Tejas Express' },
-        { departure: `${h + 4}:00`, arrival: `${h + 7}:30`, duration: '3h 30m', price: 7200, label: 'Executive Chair', pill: 'express', train: 'Vande Bharat' },
       ],
       bus: [
         { departure: `${h}:15`, arrival: `${h + 8}:15`, duration: '8h 00m', price: 600, label: 'Ordinary Sleeper', pill: 'budget', bus: 'State Roadways' },
