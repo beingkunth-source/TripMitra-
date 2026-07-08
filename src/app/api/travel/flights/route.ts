@@ -3,6 +3,14 @@ import { callSerpApi } from "@/lib/serpapi";
 import { toAirportCode, resolveAirportCode } from "@/lib/geo";
 import { getCached, setCached } from "@/lib/redis";
 
+function getDeterministicHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const departure_id = searchParams.get("departure_id");
@@ -14,41 +22,81 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
   }
 
+  // Autocorrect past or current date to a future date to ensure SerpAPI fetches successfully
+  const todayStr = new Date().toISOString().split("T")[0];
+  let outboundDateStr = outbound_date;
+  if (outboundDateStr <= todayStr) {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 14);
+    outboundDateStr = futureDate.toISOString().slice(0, 10);
+  }
+
   // 1. Cache Lookup
-  const cacheKey = `tripmitra:flights:${departure_id.toLowerCase().trim()}:${arrival_id.toLowerCase().trim()}:${outbound_date}:${return_date || "oneway"}`;
+  const cacheKey = `tripmitra:flights:${departure_id.toLowerCase().trim()}:${arrival_id.toLowerCase().trim()}:${outboundDateStr}:${return_date || "oneway"}`;
   try {
     const cachedFlights = await getCached<any>(cacheKey);
     if (cachedFlights) {
       return NextResponse.json(cachedFlights);
     }
 
-    const apiKey = process.env.SERP_API_KEY;
-    if (!apiKey) {
-      const mockData = {
-        best_flights: [
-          {
-            flights: [{ airline: "Mock Airlines", departure_airport: { time: "10:00 AM" }, arrival_airport: { time: "12:30 PM" } }],
-            total_duration: 150,
-            price: 5500
-          },
-          {
-            flights: [{ airline: "Dummy Air", departure_airport: { time: "02:00 PM" }, arrival_airport: { time: "04:45 PM" } }],
-            total_duration: 165,
-            price: 4800
-          }
-        ]
-      };
-      return NextResponse.json(mockData);
-    }
-
     const depCode = await resolveAirportCode(departure_id);
     const arrCode = await resolveAirportCode(arrival_id);
+
+    // Dynamic Mock Generator based on input params to ensure different flight options on different searches
+    const generateDynamicMock = () => {
+      const hashVal = getDeterministicHash(`${depCode}:${arrCode}:${outboundDateStr}`);
+      const carriers = [
+        { name: "IndiGo", basePrice: 4200, duration: 130 },
+        { name: "Air India", basePrice: 5100, duration: 120 },
+        { name: "Akasa Air", basePrice: 3900, duration: 140 },
+        { name: "SpiceJet", basePrice: 3600, duration: 150 },
+        { name: "Vistara", basePrice: 5900, duration: 110 }
+      ];
+
+      const idx1 = hashVal % carriers.length;
+      const idx2 = (hashVal + 1) % carriers.length;
+      const idx3 = (hashVal + 2) % carriers.length;
+      const picked = [carriers[idx1], carriers[idx2], carriers[idx3]];
+
+      const best_flights = picked.map((carrier, i) => {
+        const priceOffset = (hashVal * (i + 1)) % 1500;
+        const price = carrier.basePrice + priceOffset;
+        
+        const hour = 6 + ((hashVal + i * 3) % 12);
+        const minStr = (((hashVal + i * 15) % 4) * 15).toString().padStart(2, "0");
+        const timeStr = `${(hour % 12 || 12).toString().padStart(2, "0")}:${minStr} ${hour >= 12 ? "PM" : "AM"}`;
+        
+        const durationOffset = (hashVal * (i + 2)) % 45;
+        const total_duration = carrier.duration + durationOffset;
+        
+        const arrHour = (hour + Math.floor(total_duration / 60)) % 24;
+        const arrMinStr = (((hashVal + i * 15) % 4 * 15 + total_duration % 60) % 60).toString().padStart(2, "0");
+        const arrTimeStr = `${(arrHour % 12 || 12).toString().padStart(2, "0")}:${arrMinStr} ${arrHour >= 12 ? "PM" : "AM"}`;
+
+        return {
+          flights: [{
+            airline: carrier.name,
+            departure_airport: { name: `${departure_id} Airport`, id: depCode, time: `${outboundDateStr} ${timeStr}` },
+            arrival_airport: { name: `${arrival_id} International Airport`, id: arrCode, time: `${outboundDateStr} ${arrTimeStr}` }
+          }],
+          total_duration,
+          price
+        };
+      });
+
+      return { best_flights };
+    };
+
+    const apiKey = process.env.SERP_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(generateDynamicMock());
+    }
 
     const params: Record<string, any> = {
       engine: "google_flights",
       departure_id: depCode,
       arrival_id: arrCode,
-      outbound_date: outbound_date,
+      outbound_date: outboundDateStr,
       currency: "INR",
       hl: "en"
     };
@@ -62,8 +110,7 @@ export async function GET(request: Request) {
 
     const data = await callSerpApi(params);
     if (data && data.best_flights) {
-      // Cache SerpAPI result for 24 hours
-      await setCached(cacheKey, data, 86400);
+      await setCached(cacheKey, data, 86400); // Cache for 24 hours
       return NextResponse.json(data);
     }
 
@@ -73,42 +120,11 @@ export async function GET(request: Request) {
       console.error(`[SerpAPI Flights Format Error] Request succeeded but returned no best_flights. Response keys: ${data ? Object.keys(data).join(", ") : "null"}`);
     }
 
-    // Failover Mock Data
-    console.warn(`SerpAPI flights query failed. Returning mock flights failover.`);
-    const mockFailover = {
-      best_flights: [
-        {
-          flights: [{ 
-            airline: "Indigo Connection", 
-            departure_airport: { name: `${departure_id} Airport`, time: "06:15 AM" }, 
-            arrival_airport: { name: `${arrival_id} Intl`, time: "08:45 AM" } 
-          }],
-          total_duration: 150,
-          price: 5800
-        },
-        {
-          flights: [{ 
-            airline: "Air India Regional", 
-            departure_airport: { name: `${departure_id} Airport`, time: "11:30 AM" }, 
-            arrival_airport: { name: `${arrival_id} Intl`, time: "02:10 PM" } 
-          }],
-          total_duration: 160,
-          price: 6400
-        },
-        {
-          flights: [{ 
-            airline: "SpiceJet Saver", 
-            departure_airport: { name: `${departure_id} Airport`, time: "05:45 PM" }, 
-            arrival_airport: { name: `${arrival_id} Intl`, time: "08:20 PM" } 
-          }],
-          total_duration: 155,
-          price: 4900
-        }
-      ]
-    };
+    // Failover Dynamic Mock
+    console.warn(`SerpAPI flights query failed. Returning dynamic mock flights failover for ${depCode} -> ${arrCode}`);
+    const mockFailover = generateDynamicMock();
 
-    // Cache mock failover for 2 hours to limit repeated hits
-    await setCached(cacheKey, mockFailover, 7200);
+    await setCached(cacheKey, mockFailover, 7200); // Cache for 2 hours
 
     return NextResponse.json(mockFailover);
   } catch (error: any) {

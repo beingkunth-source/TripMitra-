@@ -39,7 +39,7 @@ export default function HomePage() {
 
   // Form State
   const [destination, setDestination] = useState("");
-  const [originCity, setOriginCity] = useState("");
+  const [originCity, setOriginCity] = useState("Mumbai");
   const [dates, setDates] = useState("");
   const [endDate, setEndDate] = useState("");
   const [travelers, setTravelers] = useState(1);

@@ -275,6 +275,13 @@ export async function resolveAirportCode(input: string): Promise<string> {
   const lower = cleaned.toLowerCase();
   if (CITY_AIRPORT_MAP[lower]) return CITY_AIRPORT_MAP[lower];
 
+  // Substring match check (e.g. "Gwalior Airport" matches "gwalior")
+  for (const [key, code] of Object.entries(CITY_AIRPORT_MAP)) {
+    if (lower.includes(key) || key.includes(lower)) {
+      return code;
+    }
+  }
+
   // 2. Cache Lookup
   const cacheKey = `tripmitra:iata:${lower}`;
   try {
