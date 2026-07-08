@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callSerpApi } from "@/lib/serpapi";
-import { toAirportCode } from "@/lib/geo";
+import { toAirportCode, resolveAirportCode } from "@/lib/geo";
 
 export async function POST(request: Request) {
   try {
@@ -12,8 +12,8 @@ export async function POST(request: Request) {
     // Real flights via SerpAPI when mode is plane, origin is specified, and API key exists
     if (mode === "plane" && origin && serpKey) {
       try {
-        const depCode = toAirportCode(origin);
-        const arrCode = toAirportCode(destination);
+        const depCode = await resolveAirportCode(origin);
+        const arrCode = await resolveAirportCode(destination);
         const date = outbound_date || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
         
         const data = await callSerpApi({

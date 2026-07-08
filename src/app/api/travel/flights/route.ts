@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callSerpApi } from "@/lib/serpapi";
-import { toAirportCode } from "@/lib/geo";
+import { toAirportCode, resolveAirportCode } from "@/lib/geo";
 import { getCached, setCached } from "@/lib/redis";
 
 export async function GET(request: Request) {
@@ -41,8 +41,8 @@ export async function GET(request: Request) {
       return NextResponse.json(mockData);
     }
 
-    const depCode = toAirportCode(departure_id);
-    const arrCode = toAirportCode(arrival_id);
+    const depCode = await resolveAirportCode(departure_id);
+    const arrCode = await resolveAirportCode(arrival_id);
 
     const params: Record<string, any> = {
       engine: "google_flights",

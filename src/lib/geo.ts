@@ -179,12 +179,70 @@ export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   'hennur': { lat: 12.9873, lng: 77.6358 },
 };
 
+import { getCached, setCached } from "./redis";
+
 export function toAirportCode(input: string): string {
   if (!input) return input;
-  const trimmed = input.trim();
-  if (/^[A-Z]{3}$/.test(trimmed)) return trimmed;
-  const lower = trimmed.toLowerCase();
-  return CITY_AIRPORT_MAP[lower] || trimmed;
+  const cleaned = input.split(',')[0].trim();
+  if (/^[A-Z]{3}$/.test(cleaned)) return cleaned;
+  const lower = cleaned.toLowerCase();
+  return CITY_AIRPORT_MAP[lower] || cleaned;
+}
+
+export async function resolveAirportCode(input: string): Promise<string> {
+  if (!input) return "";
+  
+  // 1. Clean and check synchronous dictionary
+  const cleaned = input.split(',')[0].trim();
+  if (/^[A-Z]{3}$/.test(cleaned)) return cleaned;
+  const lower = cleaned.toLowerCase();
+  if (CITY_AIRPORT_MAP[lower]) return CITY_AIRPORT_MAP[lower];
+
+  // 2. Cache Lookup
+  const cacheKey = `tripmitra:iata:${lower}`;
+  try {
+    const cached = await getCached<string>(cacheKey);
+    if (cached) return cached;
+  } catch (err) {
+    console.error("Cache lookup error for IATA:", err);
+  }
+
+  // 3. Gemini Resolution
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (apiKey) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `What is the 3-letter IATA airport code of the closest primary airport to "${cleaned}"? Respond with a JSON object in this format: { "iata": "XYZ" } where XYZ is the uppercase 3-letter IATA code. If no airport exists or you are unsure, default to "BOM".` }] }],
+          generationConfig: { response_mime_type: "application/json" }
+        })
+      });
+      if (response.ok) {
+        const resData = await response.json();
+        const text = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          const obj = JSON.parse(text.trim());
+          const codeText = obj.iata ? obj.iata.toUpperCase() : "BOM";
+          if (/^[A-Z]{3}$/.test(codeText)) {
+            try {
+              // Cache for 30 days
+              await setCached(cacheKey, codeText, 2592000);
+            } catch (cErr) {
+              console.error("Cache store error for IATA:", cErr);
+            }
+            return codeText;
+          }
+        }
+      }
+    } catch (gErr) {
+      console.error("Gemini resolution failed for:", cleaned, gErr);
+    }
+  }
+
+  return cleaned;
 }
 
 export async function fetchWithTimeout(url: string, timeoutMs = 8000): Promise<Response> {
