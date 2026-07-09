@@ -65,8 +65,37 @@ export default function HomePage() {
 
   // Stop 1 & Stop 2 for the route
   const firstDay = latestTrip?.itinerary?.[0];
-  const stop1 = firstDay?.activities?.[0]?.name ? (firstDay.activities[0].name.length > 15 ? firstDay.activities[0].name.substring(0, 15) + "..." : firstDay.activities[0].name) : "Shibuya";
-  const stop2 = firstDay?.activities?.[firstDay.activities.length - 1]?.name ? (firstDay.activities[firstDay.activities.length - 1].name.length > 15 ? firstDay.activities[firstDay.activities.length - 1].name.substring(0, 15) + "..." : firstDay.activities[firstDay.activities.length - 1].name) : (latestTrip ? "Airport" : "Asakusa");
+  
+  const getFallbackStops = (dest: string): { s1: string; s2: string } => {
+    const cleanDest = dest.split(',')[0].trim().toLowerCase();
+    switch (cleanDest) {
+      case "jaipur":
+        return { s1: "Jaipur City", s2: "Amer Fort" };
+      case "tokyo":
+        return { s1: "Shibuya", s2: "Asakusa" };
+      case "goa":
+        return { s1: "Panaji", s2: "Calangute" };
+      case "manali":
+        return { s1: "Mall Road", s2: "Solang Valley" };
+      case "mumbai":
+        return { s1: "Colaba", s2: "Gateway" };
+      case "delhi":
+        return { s1: "Connaught Pl", s2: "Red Fort" };
+      case "gwalior":
+        return { s1: "Jai Vilas Pal", s2: "Gwalior Fort" };
+      default:
+        const formatted = dest.split(',')[0].trim();
+        return { s1: `${formatted} City`, s2: `${formatted} Tour` };
+    }
+  };
+
+  const fallbacks = getFallbackStops(previewDest);
+  const stop1 = firstDay?.activities?.[0]?.name 
+    ? (firstDay.activities[0].name.length > 15 ? firstDay.activities[0].name.substring(0, 15) + "..." : firstDay.activities[0].name) 
+    : fallbacks.s1;
+  const stop2 = firstDay?.activities?.[firstDay.activities.length - 1]?.name 
+    ? (firstDay.activities[firstDay.activities.length - 1].name.length > 15 ? firstDay.activities[firstDay.activities.length - 1].name.substring(0, 15) + "..." : firstDay.activities[firstDay.activities.length - 1].name) 
+    : fallbacks.s2;
 
   // Dynamic values for budget tracking
   const totalBudget = latestTrip ? latestTrip.budgetLimit : 120000;
@@ -633,9 +662,21 @@ export default function HomePage() {
                   <span className="text-[10px] font-bold text-slate-400">Day 1 Segment</span>
                 </div>
                 <div className="h-20 w-full rounded-xl bg-slate-50 border border-gray-100 flex items-center justify-center p-2 relative overflow-hidden">
-                  <svg className="absolute left-[29px] right-[29px] top-[25px] h-2 w-[calc(100%-58px)] pointer-events-none" viewBox="0 0 100 8" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="absolute left-[29px] right-[29px] top-[25px] h-2 w-[calc(100%-58px)] overflow-visible pointer-events-none" viewBox="0 0 100 8" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M 0,4 Q 50,0 100,4" fill="none" stroke="rgba(20, 110, 120, 0.2)" strokeWidth="3" strokeLinecap="round" />
                     <path d="M 0,4 Q 50,0 100,4" fill="none" stroke="#0f766e" strokeWidth="1.5" strokeDasharray="4 3" className="animate-route-dash" strokeLinecap="round" />
+                    <g>
+                      <path 
+                        d="M-5,-3.5 L4.5,0 L-5,3.5 L-2.5,0 Z" 
+                        fill="#0f766e" 
+                      />
+                      <animateMotion 
+                        dur="3.2s" 
+                        repeatCount="indefinite" 
+                        rotate="auto"
+                        path="M 0,4 Q 50,0 100,4"
+                      />
+                    </g>
                   </svg>
                   <div className="absolute left-6 top-6 flex flex-col items-center">
                     <span className="w-2.5 h-2.5 bg-teal-600 rounded-full ring-4 ring-teal-500/20" />
