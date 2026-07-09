@@ -633,9 +633,9 @@ export default function HomePage() {
                   <span className="text-[10px] font-bold text-slate-400">Day 1 Segment</span>
                 </div>
                 <div className="h-20 w-full rounded-xl bg-slate-50 border border-gray-100 flex items-center justify-center p-2 relative overflow-hidden">
-                  <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 40 C 130 10, 240 70, 380 40" fill="none" stroke="rgba(20, 110, 120, 0.2)" strokeWidth="4" strokeLinecap="round" />
-                    <path d="M20 40 C 130 10, 240 70, 380 40" fill="none" stroke="#0f766e" strokeWidth="2" strokeDasharray="6 4" className="animate-route-dash" strokeLinecap="round" />
+                  <svg className="absolute left-[29px] right-[29px] top-[25px] h-2 w-[calc(100%-58px)] pointer-events-none" viewBox="0 0 100 8" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 0,4 Q 50,0 100,4" fill="none" stroke="rgba(20, 110, 120, 0.2)" strokeWidth="3" strokeLinecap="round" />
+                    <path d="M 0,4 Q 50,0 100,4" fill="none" stroke="#0f766e" strokeWidth="1.5" strokeDasharray="4 3" className="animate-route-dash" strokeLinecap="round" />
                   </svg>
                   <div className="absolute left-6 top-6 flex flex-col items-center">
                     <span className="w-2.5 h-2.5 bg-teal-600 rounded-full ring-4 ring-teal-500/20" />
