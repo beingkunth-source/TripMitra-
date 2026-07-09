@@ -161,6 +161,136 @@ Each day should have exactly 3 activities with real, specific place names in ${d
             { name: "Dona Paula Viewpoint", description: "Take in the panoramic views of the Mormugao harbor and the Zuari and Mandovi rivers merging into the sea.", time: "Evening" }
           ]
         }
+      ],
+      manali: [
+        {
+          theme: "Temples & Valleys",
+          activities: [
+            { name: "Hadimba Temple", description: "Visit the historic wooden pagoda-style temple nestled amidst dense cedar forests, dedicated to Goddess Hadimba.", time: "Morning" },
+            { name: "Solang Valley", description: "Indulge in adventure activities like paragliding, zorbing, and quad biking in the scenic Solang Valley.", time: "Afternoon" },
+            { name: "Jogini Waterfalls", description: "Trek through orchards and pine forests to reach the scenic cascading Jogini falls.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Old Manali & Hot Springs",
+          activities: [
+            { name: "Vashisht Hot Springs", description: "Bathe in the natural sulfur hot water springs, believed to have healing medicinal properties.", time: "Morning" },
+            { name: "Old Manali Cafes", description: "Stroll through the old village streets, exploring unique bakeries, art cafes, and wooden houses.", time: "Afternoon" },
+            { name: "Mall Road Shopping", description: "Browse traditional Kullu shawls, wooden handicrafts, and local spices on Manali's bustling main street.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "High Altitude Wonders",
+          activities: [
+            { name: "Rohtang Pass", description: "Witness spectacular glacier viewpoints and snow fields at an altitude of 13,058 feet (subject to permit).", time: "Morning" },
+            { name: "Nehru Kund", description: "Stop by the natural cold water spring flowing from the Brighu lake, named after India's first Prime Minister.", time: "Afternoon" },
+            { name: "Manu Temple", description: "Walk up to the historic pagoda-style temple dedicated to Sage Manu in Old Manali.", time: "Evening" }
+          ]
+        }
+      ],
+      delhi: [
+        {
+          theme: "Mughal Heritage & War Memorials",
+          activities: [
+            { name: "Red Fort", description: "Explore the massive red sandstone fortress complex built by Mughal Emperor Shah Jahan.", time: "Morning" },
+            { name: "Chandni Chowk Market", description: "Take a rickshaw ride through the narrow lanes of Delhi's oldest market, trying paranthas and jalebis.", time: "Afternoon" },
+            { name: "India Gate", description: "Pay respects at the national war memorial, enjoying evening walks around the lawns and fountains.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Garden Tombs & Temples",
+          activities: [
+            { name: "Humayun's Tomb", description: "Walk through the stunning garden tomb that inspired the Taj Mahal, built with red sandstone and white marble.", time: "Morning" },
+            { name: "Lotus Temple", description: "Meditate in the beautiful lotus-shaped Bahá'í House of Worship, open to all religions.", time: "Afternoon" },
+            { name: "Lodhi Gardens", description: "Stroll through the historical green park containing tombs of the Lodhi and Sayyid dynasties.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Ancient Minarets & Shopping",
+          activities: [
+            { name: "Qutub Minar", description: "Admire the 73-meter tall historic brick minaret, built in 1193, surrounded by ancient ruins.", time: "Morning" },
+            { name: "Connaught Place", description: "Shop and dine in the classic Georgian-style circular columns architecture district.", time: "Afternoon" },
+            { name: "Akshardham Temple", description: "Marvel at the spectacular carved stone temple complex, water show, and exhibits.", time: "Evening" }
+          ]
+        }
+      ],
+      mumbai: [
+        {
+          theme: "Colonial Gateways & Promenades",
+          activities: [
+            { name: "Gateway of India", description: "Admire the basalt arch monument overlooking the Arabian Sea, built to commemorate the visit of King George V.", time: "Morning" },
+            { name: "Colaba Causeway", description: "Shop for handicrafts, jewelry, and clothes, followed by lunch at the iconic Leopold Cafe.", time: "Afternoon" },
+            { name: "Marine Drive Queen's Necklace", description: "Stroll along the C-shaped seaside promenade, watching the sunset and the sparkling city lights.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Island Temples & Gothic Stations",
+          activities: [
+            { name: "Elephanta Caves", description: "Take a ferry to the island to explore the 5th-century rock-cut Shiva temple cave carvings.", time: "Morning" },
+            { name: "Chhatrapati Shivaji Terminus (CSMT)", description: "Photograph the UNESCO heritage Victorian Gothic railway station blending Indian palace themes.", time: "Afternoon" },
+            { name: "Haji Ali Dargah", description: "Walk along the narrow causeway into the sea to visit the floating mosque and tomb.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Bridges & Beaches",
+          activities: [
+            { name: "Bandra-Worli Sea Link", description: "Take a cab ride over the architectural cable-stayed bridge spanning the sea.", time: "Morning" },
+            { name: "Crawford Market", description: "Explore the bustling historic indoor wholesale fruit, vegetable, and pet market.", time: "Afternoon" },
+            { name: "Juhu Beach Chowpatty", description: "Try the iconic Mumbai street foods like Pav Bhaji, Bhel Puri, and Vada Pav along the beach.", time: "Evening" }
+          ]
+        }
+      ],
+      gwalior: [
+        {
+          theme: "Hilltop Fortresses & Carvings",
+          activities: [
+            { name: "Gwalior Fort", description: "Explore the towering 8th-century fortress situated on a steep sandstone hill, termed the 'Gibraltar of India'.", time: "Morning" },
+            { name: "Man Singh Palace", description: "Admire the brilliant blue tiled carvings, royal court chambers, and historic underground dungeons.", time: "Afternoon" },
+            { name: "Sas Bahu Temples", description: "Marvel at the intricately carved 11th-century twin temples dedicated to Lord Vishnu.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Palace Museums & Music Tombs",
+          activities: [
+            { name: "Jai Vilas Palace", description: "Visit the grand Italianate palace featuring the world's largest chandeliers and a silver model train dining table.", time: "Morning" },
+            { name: "Tomb of Tansen", description: "Visit the memorial of the legendary musician Tansen, paying respects at the sacred tamarind tree.", time: "Afternoon" },
+            { name: "Teli Ka Mandir", description: "Witness the tallest structure in the fort, blending Dravidian temple styling with north Indian carvings.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Jain Monoliths & Temples",
+          activities: [
+            { name: "Gopachal Parvat Rock Statues", description: "Admire the colossal rock-cut Jain Tirthankara monuments carved along the fort walls.", time: "Morning" },
+            { name: "Sun Temple Gwalior", description: "Visit the beautiful red sandstone temple modeled after the Konark Sun Temple, surrounded by gardens.", time: "Afternoon" },
+            { name: "Maharaj Bada Square", description: "Explore the central market square displaying palace structures of Roman, Gothic, and Mughal styles.", time: "Evening" }
+          ]
+        }
+      ],
+      europe: [
+        {
+          theme: "Monuments & Art",
+          activities: [
+            { name: "Louvre Museum (Paris)", description: "Admire the glass pyramid entrance and iconic artworks like the Mona Lisa and Venus de Milo.", time: "Morning" },
+            { name: "Eiffel Tower climb", description: "Take the elevators to the top deck of the iron lady for panoramic views across Paris.", time: "Afternoon" },
+            { name: "Seine River Cruise", description: "Float past the Notre-Dame Cathedral and historical bridges under the evening lights.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Canals & Historic Squares",
+          activities: [
+            { name: "Colosseum Tour (Rome)", description: "Step inside the historic Roman amphitheater where gladiators competed for glory.", time: "Morning" },
+            { name: "Gondola Ride (Venice)", description: "Navigate the picturesque canals of Venice past gothic architectural palazzos.", time: "Afternoon" },
+            { name: "Prague Old Town Square", description: "Watch the ancient Astronomical Clock strike the hour, enjoying trdelnik pastries.", time: "Evening" }
+          ]
+        },
+        {
+          theme: "Modern Masterpieces",
+          activities: [
+            { name: "Sagrada Familia (Barcelona)", description: "Marvel at the soaring towers and colorful stained-glass forest interior of Gaudi's masterpiece.", time: "Morning" },
+            { name: "Amsterdam Canal cruise", description: "Explore the historic belt of canals and houseboats in the Dutch capital.", time: "Afternoon" },
+            { name: "Acropolis of Athens", description: "Hike up the rocky outcrop to explore the ancient Parthenon temple ruins overlooking Greece.", time: "Evening" }
+          ]
+        }
       ]
     };
 
